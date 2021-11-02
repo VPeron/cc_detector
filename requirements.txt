@@ -27,3 +27,11 @@ six>=1.14
 joblib
 memoized-property
 termcolor
+
+#chess packages
+chess
+stockfish
+
+#viz
+matplotlib
+seaborn
