@@ -28,6 +28,7 @@ class ChessData:
             chess.Piece.from_symbol('k')
             ]
 
+        #Set list of all squares on the board
         self.SQUARES = [i for i in range(64)]
 
     def import_data(
@@ -42,14 +43,11 @@ class ChessData:
         '''
         # read file
         pgn = open(data_path, encoding='UTF-8')
-
         game_counter = 0
 
         #preshape dataframes
         player_dict = set_player_dict()
-
         game_dict = set_game_dict()
-
         move_dict = set_move_dict()
 
         while True:  # keep reading games
@@ -58,15 +56,15 @@ class ChessData:
                 board = game.board()
                 moves = list(game.mainline_moves())
 
-                # Player
+                # Player info parsing
                 players = player_info_extractor(game=game,
                                                 player_dict=player_dict)
 
-                # Games
+                # Game info parsing
                 games = game_info_extractor(game=game,
                                             game_dict=game_dict)
 
-                # MOVE CYCLE
+                # Moves info parsing
                 white = True
                 for move in moves:
                     board.push(move)
@@ -77,7 +75,7 @@ class ChessData:
                     #                             white=white,
                     #                             pieces=self.PIECES)
 
-                    #extract GAME ID and FEN moves
+                    #Extract GAME ID and FEN moves
                     move_dict = move_info_extractor(game=game,
                                                     board=board,
                                                     move_dict=move_dict)
@@ -88,17 +86,17 @@ class ChessData:
                                                    squares=self.SQUARES,
                                                    move_dict=move_dict)
 
-                    #Turn color and castling availablity
+                    #Extract turn color and castling availablity
                     move_dict, white = castling_right(game=game,
                                                board=board,
                                                move_dict=move_dict,
                                                white=white)
 
-                    #(Pseudo) en passant opportunity
+                    #Identify (pseudo) en passant opportunity
                     move_dict = en_passant_opp(board=board,
                                                move_dict=move_dict)
 
-                    #Halfmove clock
+                    #Extract Halfmove clock
                     move_dict = halfmove_clock(board=board,
                                                move_dict=move_dict)
 

@@ -1,5 +1,7 @@
 import chess
+import pandas as pd
 
+#functions for the data import and parsing
 def set_move_dict():
     move_dict = {
         'Game_ID': [],
@@ -69,3 +71,19 @@ def halfmove_clock(board, move_dict):
 #     move_dict = en_passant_opp(board, move_dict)
 #     move_dict = halfmove_clock(board, move_dict)
 #     return move_dict, white
+
+
+#functions that work with the dataframe generated from the data import
+def binary_board_df(move_df):
+    list_wide = []
+    for line in range(len(move_df['Bitmap_moves'])):
+        df_board = pd.DataFrame(move_df['Bitmap_moves'][line])
+
+        dict_wide = {}
+        for index1, i in enumerate(df_board.columns):
+            for index2, j in enumerate(df_board.index):
+                dict_wide[str(i) + str(j)] = df_board.iloc[index2, index1]
+
+        list_wide.append(dict_wide)
+    df_wide = pd.DataFrame(list_wide)
+    return df_wide
