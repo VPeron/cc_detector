@@ -28,6 +28,7 @@ joblib
 memoized-property
 termcolor
 uuid
+shortuuid
 
 #chess packages
 chess

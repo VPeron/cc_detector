@@ -1,11 +1,19 @@
 import pandas as pd
 import numpy as np
-import uuid 
+import uuid
+import shortuuid
 
 def id_generator(id):
-    '''generates unique IDs'''
+    '''generates unique IDs, 32 integers'''
     return uuid.uuid4().int
 
+def short_id_gen(id):
+    '''generates unique IDs, string with 15 characters'''
+    return shortuuid.ShortUUID().random(length=15)
+
+def short_id_generator(id):
+    '''generates unique IDs'''
+    return
 
 # for df_players
 players_id = pd.DataFrame({'Players': [], 'Player_ID' : []})
@@ -49,6 +57,6 @@ def assign_player_id(input_df):
 
 def game_id(input_df):
     '''generates IDs for df_games'''
-    input_df['Game_ID'] = input_df['Game_ID'].apply(id_generator)
+    input_df['Game_ID'] = input_df['Game_ID'].apply(short_id_gen)
     return input_df
 
