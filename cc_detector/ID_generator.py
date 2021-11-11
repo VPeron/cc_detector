@@ -11,15 +11,13 @@ def short_id_gen(id):
     '''generates unique IDs, string with 15 characters'''
     return shortuuid.ShortUUID().random(length=15)
 
-def short_id_generator(id):
-    '''generates unique IDs'''
-    return
 
-# for df_players
+
+# for df_players - a df consisting unique player names and ID's
 players_id = pd.DataFrame({'Players': [], 'Player_ID' : []})
 
 
-def players_id_list(input_df, players_id):
+def players_id_df(input_df, players_id):
     '''generates list with player names and IDs'''
     #extract black and white columns
     black = list(input_df["Black"]) 
@@ -28,7 +26,7 @@ def players_id_list(input_df, players_id):
     #merge uniqe values from both columns:
     bw_merged = pd.DataFrame(list(set(black + white)), columns=["Players"])
     
-    # Player_ID columns filled with NaNs:
+    # Player_ID column filled with NaNs:
     players_id = players_id.merge(bw_merged, how="outer", left_on=["Players"], right_on=["Players"])
     
     # NaNs replaced with generated IDs
@@ -41,12 +39,12 @@ def players_id_list(input_df, players_id):
 
 def assign_player_id(input_df): 
     '''returns a df with 2 new columns and assigns IDs to the player'''
-    # merging on white column with player_id
+    # merging input_df on white column with players_id
     m_white = input_df.merge(players_id, left_on=["White"], right_on=['Players'])   #
     m_white['White_ID'] = m_white['Player_ID']
     m_white.drop(columns=['Players', "Player_ID"], inplace=True)
 
-    # merging on black column with player_id
+    # merging input_df on black column with players_id
     m_bw = m_white.merge(players_id, left_on=["Black"], right_on=['Players'])
     m_bw['Black_ID'] = m_bw['Player_ID']
     m_bw.drop(columns=['Players', "Player_ID"], inplace=True)
@@ -55,8 +53,13 @@ def assign_player_id(input_df):
 
 
 
-def game_id(input_df):
-    '''generates IDs for df_games'''
-    input_df['Game_ID'] = input_df['Game_ID'].apply(short_id_gen)
-    return input_df
+# def game_id(input_df):
+#     '''generates IDs for df_games'''
+#     input_df['Game_ID'] = input_df['Game_ID'].apply(short_id_gen)
+#     return input_df
 
+
+def moves_id(input_df):
+'''generates IDs for each move in the game based on Game_ID, White & Black players IDs & clock(?)'''
+input_df['Move_ID'] = input_df.apply(lambda row: f"{row.Game_ID }-{row.White}-{row.Black}", axis=1)
+return input_df
