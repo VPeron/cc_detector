@@ -1,9 +1,7 @@
-from io import DEFAULT_BUFFER_SIZE
 import pandas as pd
 import numpy as np
 import uuid
 import shortuuid
-
 
 
 def id_generator(id):
@@ -19,7 +17,7 @@ def short_id_gen(id):
 players_id = pd.DataFrame({'Players': [], 'Player_ID' : []})
 
 def players_id_df(input_df, players_id):
-    '''generates list with player names and IDs to merge with df_players'''
+    '''generates list with unique player names and IDs to merge with df_players'''
     #extract black and white columns
     black = list(input_df["Black"]) 
     white = list(input_df["White"])
