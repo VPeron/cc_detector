@@ -1,3 +1,8 @@
+import pandas as pd
+
+
+from cc_detector.ids_generator import id_generator, finding_comp, players_id_df, player_id
+
 
 def set_player_dict():
     player_dict = {
@@ -23,3 +28,6 @@ def player_info_extractor(game, player_dict):
     player_dict['WhiteIsComp'].append(game.headers.get('WhiteIsComp', 'No'))
 
     return player_dict
+
+df_players = pd.DataFrame(player_dict)
+
