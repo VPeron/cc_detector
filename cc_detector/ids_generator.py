@@ -44,7 +44,7 @@ def player_id(df_players):
     m_white.drop(columns=['Players', "Player_ID"], inplace=True)
 
     # merging input_df on black column with players_id
-    m_bw = m_white.merge(players_id, left_on=["Black"], right_on=['Players'])
+    m_bw = m_white.merge(players_id, left_on=["Black"], right_on=['Players']).astype(object)
     m_bw['Black_ID'] = m_bw['Player_ID']
     m_bw.drop(columns=['Players', "Player_ID"], inplace=True)
     df_players = m_bw
@@ -56,11 +56,11 @@ def game_id(df_games):
     df_games["old_ID"] = df_games["Game_ID"]
     df_games['Game_ID'] = df_games['Game_ID'].apply(short_id_gen)
     
-    # merge df_games with players_id
-    df_games = df_games.merge(players_id, left_on='White', right_on='Players')
-    df_games = df_games.merge(players_id, left_on='Black', right_on='Players')
-    df_games.drop(columns=['Players_x', 'Players_y'], inplace=True) #optionally drop White, Black columns
-    df_games.rename(columns = {'Game_ID_y' : 'Game_ID', 'Player_ID_x': 'White_ID', 'Player_ID_y': 'Black_ID'}, inplace=True)
+    # adding players ids
+    # df_games = df_games.merge(players_id, left_on='White', right_on='Players')
+    # df_games = df_games.merge(players_id, left_on='Black', right_on='Players')
+    # df_games.drop(columns=['Players_x', 'Players_y'], inplace=True) #optionally drop White, Black columns
+    # df_games.rename(columns = {'Game_ID_y' : 'Game_ID', 'Player_ID_x': 'White_ID', 'Player_ID_y': 'Black_ID'}, inplace=True)
     
     return df_games
 
