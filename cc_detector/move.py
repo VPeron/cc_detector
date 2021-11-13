@@ -1,5 +1,7 @@
 import chess
 import pandas as pd
+import numpy as np
+
 
 #functions for the data import and parsing
 def set_move_dict():
@@ -61,6 +63,7 @@ def en_passant_opp(board, move_dict):
     return move_dict
 
 def halfmove_clock(board, move_dict):
+    """Counts half-moves goneby without a capture or pawn move."""
     move_dict['Halfmove_clock'].append(board.halfmove_clock)
     return move_dict
 
@@ -73,17 +76,21 @@ def halfmove_clock(board, move_dict):
 #     return move_dict, white
 
 
-#functions that work with the dataframe generated from the data import
+## Functions that work with the dataframe generated from the data import
+
 def binary_board_df(move_df):
-    list_wide = []
+    df_header = pd.DataFrame(move_df['Bitmap_moves'][0])
+    headers = []
+    for i in df_header.columns:
+        for j in df_header.index:
+            headers.append(str(i) + str(j))
+
+    boards = []
     for line in range(len(move_df['Bitmap_moves'])):
-        df_board = pd.DataFrame(move_df['Bitmap_moves'][line])
+        df_board = pd.DataFrame(move_df['Bitmap_moves'][line]).to_numpy()
+        array_wide = df_board.flatten('F')
+        boards.append(array_wide.reshape(1, -1))
 
-        dict_wide = {}
-        for index1, i in enumerate(df_board.columns):
-            for index2, j in enumerate(df_board.index):
-                dict_wide[str(i) + str(j)] = df_board.iloc[index2, index1]
+    df_wide = pd.DataFrame(np.concatenate(boards), columns=headers)
 
-        list_wide.append(dict_wide)
-    df_wide = pd.DataFrame(list_wide)
     return df_wide

@@ -4,10 +4,14 @@ import numpy as np
 import chess
 import chess.pgn
 
+from sklearn.preprocessing import MinMaxScaler
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+
 from cc_detector.player import set_player_dict, player_info_extractor
 from cc_detector.game import set_game_dict, game_info_extractor
 from cc_detector.move import set_move_dict, move_info_extractor,\
-    bitmap_representer, castling_right, en_passant_opp, halfmove_clock #, move_dict_maker
+    bitmap_representer, castling_right, en_passant_opp, halfmove_clock,\
+    binary_board_df#, move_dict_maker
 
 
 class ChessData:
@@ -56,49 +60,50 @@ class ChessData:
                 board = game.board()
                 moves = list(game.mainline_moves())
 
-                # Player info parsing
-                players = player_info_extractor(game=game,
-                                                player_dict=player_dict)
+                if len(moves) > 5:
+                    # Player info parsing
+                    players = player_info_extractor(game=game,
+                                                    player_dict=player_dict)
 
-                # Game info parsing
-                games = game_info_extractor(game=game,
-                                            game_dict=game_dict)
+                    # Game info parsing
+                    games = game_info_extractor(game=game,
+                                                game_dict=game_dict)
 
-                # Moves info parsing
-                white = True
-                for move in moves:
-                    board.push(move)
+                    # Moves info parsing
+                    white = True
+                    for move in moves:
+                        board.push(move)
 
-                    # move_dict = move_dict_maker(game=game,
-                    #                             board=board,
-                    #                             move_dict=move_dict,
-                    #                             white=white,
-                    #                             pieces=self.PIECES)
+                        # move_dict = move_dict_maker(game=game,
+                        #                             board=board,
+                        #                             move_dict=move_dict,
+                        #                             white=white,
+                        #                             pieces=self.PIECES)
 
-                    #Extract GAME ID and FEN moves
-                    move_dict = move_info_extractor(game=game,
-                                                    board=board,
+                        #Extract GAME ID and FEN moves
+                        move_dict = move_info_extractor(game=game,
+                                                        board=board,
+                                                        move_dict=move_dict)
+
+                        #Generate bitmap representation of FENs
+                        move_dict = bitmap_representer(board=board,
+                                                    pieces=self.PIECES,
+                                                    squares=self.SQUARES,
                                                     move_dict=move_dict)
 
-                    #Generate bitmap representation of FENs
-                    move_dict = bitmap_representer(board=board,
-                                                   pieces=self.PIECES,
-                                                   squares=self.SQUARES,
-                                                   move_dict=move_dict)
+                        #Extract turn color and castling availablity
+                        move_dict, white = castling_right(game=game,
+                                                board=board,
+                                                move_dict=move_dict,
+                                                white=white)
 
-                    #Extract turn color and castling availablity
-                    move_dict, white = castling_right(game=game,
-                                               board=board,
-                                               move_dict=move_dict,
-                                               white=white)
+                        #Identify (pseudo) en passant opportunity
+                        move_dict = en_passant_opp(board=board,
+                                                move_dict=move_dict)
 
-                    #Identify (pseudo) en passant opportunity
-                    move_dict = en_passant_opp(board=board,
-                                               move_dict=move_dict)
-
-                    #Extract Halfmove clock
-                    move_dict = halfmove_clock(board=board,
-                                               move_dict=move_dict)
+                        #Extract Halfmove clock
+                        move_dict = halfmove_clock(board=board,
+                                                move_dict=move_dict)
 
                 game_counter += 1
                 if game_counter == import_lim:  # number of games to read
@@ -116,9 +121,75 @@ class ChessData:
         return df_players, df_games, df_moves
 
 
+    def feature_df_maker(self, move_df):
+        #get binary board representation for each move
+        df_wide = binary_board_df(move_df)
+
+        #get non-board-representation features from move_df
+        game_infos = move_df[[
+            "Game_ID", "turn", "WhiteIsComp", "Castling_right", "EP_option",
+            "Halfmove_clock"
+        ]]
+
+        # concatenate board representations with other features
+        df_wide_full = df_wide.join(game_infos)
+
+        # Generate binary feature that indicates if player is computer
+        df_wide_full["Computer"] = df_wide_full.apply(
+            lambda x: 1 if (
+            (x["WhiteIsComp"] == "Yes") and (x["turn"] == "white")
+            ) or (
+                (x["WhiteIsComp"] == "No") and (x["turn"] == "black")
+                ) else 0,
+                                                    axis=1)
+
+        # Scale features
+        scaler = MinMaxScaler()
+        df_wide_full["Halfmove_clock"] = scaler.fit_transform(
+            df_wide_full[["Halfmove_clock"]])
+
+        #Generate Target vector
+        y = df_wide_full.groupby(by=["Game_ID", "turn"],
+                                sort=False).agg(min)["Computer"].values
+
+        #Split df into white and black games
+        df_white = df_wide_full[df_wide_full["turn"] == "white"]
+        df_black = df_wide_full[df_wide_full["turn"] == "black"]
+
+        #generate Game-ID list
+        game_list = df_wide_full["Game_ID"].unique()
+
+        # create list of game arrays that conatain the moves of one player
+        # respectively plus additional features
+        games_list = []
+        for game_id in game_list:
+            df_w_temp = df_white[df_white["Game_ID"] == game_id].drop(
+                columns=["turn", "WhiteIsComp", "Game_ID", "Computer"])
+            games_list.append(np.array(df_w_temp))
+            df_b_temp = df_black[df_black["Game_ID"] == game_id].drop(
+                columns=["turn", "WhiteIsComp", "Game_ID", "Computer"])
+            games_list.append(np.array(df_b_temp))
+
+        # padding arrays
+        X_pad = pad_sequences(games_list,
+                              dtype='float32',
+                              padding='post',
+                              value=-999)
+
+        return X_pad, y
+
+
+
 if __name__ == "__main__":
+    #Print heads of imported dfs
     player_df, game_df, move_df = ChessData().import_data()
 
     print(player_df.head())
     print(game_df.head())
     print(move_df.head())
+
+    #print feature and target arrays
+    X_pad, y = ChessData().feature_df_maker(move_df)
+
+    print(X_pad)
+    print(y)
