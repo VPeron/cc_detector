@@ -16,6 +16,29 @@ def short_id_gen(id):
 # for df_players - a df consisting unique player names and ID's
 players_id = pd.DataFrame({'Players': [], 'Player_ID' : []})
 
+def finding_comp(df_players):
+    ''' taking all players from df_players, who are computer'''
+    # checking the White column for computers
+    comp1 = df_players.loc[df_players['WhiteIsComp'] == "Yes"]
+    comp1 = comp1[['White']].copy()
+    comp1.drop_duplicates(inplace=True)
+
+    #checking the black column for computers
+    comp2 = df_players.loc[df_players['WhiteIsComp'] == "No"]
+    comp2 = comp2[['Black']].copy()
+    comp2.drop_duplicates(inplace=True)
+    
+    # merge and get the unique names
+    c1 = list(comp1['White'])
+    c2 = list(comp2['Black'])
+    computer = list(set(c1 + c2))
+    
+    computer = pd.DataFrame({'Computer' : computer})
+    computer['Yes'] = 'Yes'
+    
+    # returns a df with computer names
+    return computer
+
 def players_id_df(input_df, players_id):
     '''generates list with unique player names and IDs to merge with df_players'''
     #extract black and white columns
@@ -32,7 +55,17 @@ def players_id_df(input_df, players_id):
     nans_to_ids = players_id["Player_ID"].fillna(players_id["Player_ID"].apply(id_generator))
     
     #inserting missing IDs to players_id
-    players_id["Player_ID"] = nans_to_ids 
+    players_id["Player_ID"] = nans_to_ids
+
+    #finding computers in df
+    computer = finding_comp()
+
+    #merging df on unique names
+    players_id = players_id.merge(computer, left_on='Players', right_on='Computer', how='outer')
+    players_id = players_id.replace(np.nan, 'No')
+    players_id.drop(columns='Computer', inplace=True)
+    players_id.rename(columns={'Yes' : 'Computer'}, inplace=True)
+
     return players_id
 
 
