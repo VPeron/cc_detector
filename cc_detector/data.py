@@ -48,6 +48,8 @@ class ChessData:
         # read file
         pgn = open(data_path, encoding='UTF-8')
         game_counter = 0
+        games_parsed = 0
+        move_counter = 0
 
         #preshape dataframes
         player_dict = set_player_dict()
@@ -104,6 +106,8 @@ class ChessData:
                         #Extract Halfmove clock
                         move_dict = halfmove_clock(board=board,
                                                 move_dict=move_dict)
+                        move_counter += 1
+                    games_parsed += 1
 
                 game_counter += 1
                 if game_counter == import_lim:  # number of games to read
@@ -113,6 +117,9 @@ class ChessData:
                 break
 
         print(f'{game_counter} games read.')
+        print(
+            f'{games_parsed} games with a total number of {move_counter} moves parsed.'
+        )
 
         df_players = pd.DataFrame(players)
         df_games = pd.DataFrame(games)
