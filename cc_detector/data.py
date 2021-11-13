@@ -7,7 +7,7 @@ import chess.pgn
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 
-from cc_detector.player import set_player_dict, player_info_extractor
+from cc_detector.player import set_player_dict, player_info_extractor, players_id_list
 from cc_detector.game import set_game_dict, game_info_extractor
 from cc_detector.move import set_move_dict, move_info_extractor,\
     bitmap_representer, castling_right, en_passant_opp, halfmove_clock,\
@@ -37,7 +37,7 @@ class ChessData:
 
     def import_data(
             self,
-            data_path="/Users/manuel/code/VPeron/cc_detector/raw_data/Fics_data_pc_data.pgn",
+            data_path="raw_data/Fics_data_pc_data.pgn",
             import_lim=50):
         '''
         Takes the path to a pgn file as an input as well as a number of
@@ -114,9 +114,11 @@ class ChessData:
 
         print(f'{game_counter} games read.')
 
-        df_players = pd.DataFrame(players)
+        df_players_temp = pd.DataFrame(players)
         df_games = pd.DataFrame(games)
         df_moves = pd.DataFrame(move_dict)
+
+        df_players = players_id_list(df_players_temp)
 
         return df_players, df_games, df_moves
 
