@@ -63,6 +63,7 @@ def en_passant_opp(board, move_dict):
     return move_dict
 
 def halfmove_clock(board, move_dict):
+    """Counts half-moves goneby without a capture or pawn move."""
     move_dict['Halfmove_clock'].append(board.halfmove_clock)
     return move_dict
 
