@@ -7,7 +7,8 @@ import requests
 
 
 # HEADER
-st.write('## Chess Files')
+st.write('# Chess Files')
+st.write('## Chap 1 - Human vs Engine Detection')
 img = "https://images3.alphacoders.com/235/235755.jpg"
 st.image(img)
 
@@ -27,6 +28,7 @@ df_players, df_games = get_data()
 # st.write(df_players)
 # st.write(df_games)
 
+# Player search with ranking graph
 def player_search():
     title = st.text_input('Search Player games', '')
     if title:
@@ -44,15 +46,12 @@ def player_search():
             plt.plot(player['White_Elo'])
             plt.grid()
             st.pyplot(fig)
+            
 player_search()
 
-#TODO search opening
-#TODO view board img
-#TODO plot generic game or player overview 
-    
-
+# SIDEBAR
 def sidebar():
-    # sidebar title
+    # title
     st.sidebar.write('## Files sidebar')
     # 1st dropdown
     add_selectbox = st.sidebar.selectbox(
@@ -63,11 +62,12 @@ def sidebar():
         white = df_players['White'].unique()
         black = df_players['Black'].unique()
         players = np.concatenate((white, black))
-        # players = white.append(black)
         st.sidebar.write(players)
         
     if add_selectbox == 'games':
-        st.sidebar.write(df_games)
+        st.sidebar.write('See Mainscreen View')
+        st.write(df_games)
+        
 sidebar()
 
 
