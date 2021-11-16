@@ -116,5 +116,14 @@ def move_id(df_moves, df_games):
     df_moves = merging
     return df_moves
 
-if '__name__' == '__main__':
-    player_id(), game_id(), move_id()
+
+def find_and_replace_duplicates(df, subset):
+    while True:
+        if df.duplicated(subset=subset, keep=False).any() == True:
+            is_dup = df.duplicated(subset=subset, keep="first")
+            if subset == 'Game_ID':
+                df[subset] = df[subset].where(~is_dup, df[subset].apply(short_id_gen))
+            return df
+            df[subset] = df[subset].where(~is_dup, df[subset].apply(id_generator))
+        else: print(f'\u2713 no duplicates in {subset}s')
+        break

@@ -8,3 +8,5 @@ raw_data/
 .env
 .pgn
 .vscode/
+*:Zone.Identifier
+
