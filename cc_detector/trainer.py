@@ -1,15 +1,17 @@
 import pandas as pd
 import numpy as np
 from pandas.core.frame import DataFrame
+import matplotlib.pyplot as plt
 
 from cc_detector.data import ChessData
 
 from tensorflow.keras.models import Sequential
-from tensorflow.keras import layers
+from tensorflow.keras import layers, regularizers
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.optimizers import RMSprop
 
+import joblib
 
 class Trainer():
     def __init__(self) -> None:
@@ -49,18 +51,29 @@ class Trainer():
         Builds an LSTM model, compiles it, and then fits it to the data transformed
         with the transform_data() function. Returns the trained model
         """
+        reg_l1 = regularizers.L1(0.001)
+        #reg_l2 = regularizers.L2(0.01)
+        #reg_l1_l2 = regularizers.l1_l2(l1=0.005, l2=0.0005)
         model = Sequential()
 
         model.add(
             layers.Masking(mask_value=-999,
                            input_shape=(self.X_train.shape[1],
                                                 self.X_train.shape[2])))
-        model.add(layers.LSTM(units=128, activation='tanh', return_sequences=True))
-        model.add(layers.Dropout(0.2))
-        model.add(layers.LSTM(units=64, activation='tanh', return_sequences=False))
-        model.add(layers.Dropout(0.2))
-        model.add(layers.Dense(32, activation='relu'))
+        model.add(
+            layers.LSTM(units=64,
+                        activation='tanh',
+                        return_sequences=True, recurrent_dropout=0.1,
+                        kernel_regularizer=reg_l1))
+        model.add(
+            layers.LSTM(units=32,
+                        activation='tanh',
+                        return_sequences=False,
+                        recurrent_dropout=0.1))
         model.add(layers.Dense(16, activation='relu'))
+        model.add(layers.Dropout(0.2))
+        model.add(layers.Dense(8, activation='relu'))
+        model.add(layers.Dropout(0.2))
         model.add(layers.Dense(units=1, activation="sigmoid"))
 
         # The compilation
@@ -74,7 +87,7 @@ class Trainer():
         # The fit
         es = EarlyStopping(restore_best_weights=True, patience=5)
 
-        model.fit(self.X_train, self.y_train,
+        history = model.fit(self.X_train, self.y_train,
                   batch_size=32,
                   epochs=50,
                   callbacks=[es],
@@ -82,10 +95,33 @@ class Trainer():
                   verbose=verbose)
 
         self.model = model
+        joblib.dump(model, 'cc_detect_lstm_model.joblib')
 
-        print("Model has been trained 💪")
+        print("Model has been trained and saved 💪")
 
-        return self.model
+        return history
+
+    def plot_train_history(self, history):
+        fig, (ax1, ax2) = plt.subplots(1,2, figsize=(13,4))
+        ax1.plot(history.history['loss'])
+        ax1.plot(history.history['val_loss'])
+        ax1.set_title('Model loss')
+        ax1.set_ylabel('Loss')
+        ax1.set_xlabel('Epoch')
+        #ax1.set_ylim(ymin=0, ymax=200)
+        ax1.legend(['Train', 'Validation'], loc='best')
+        ax1.grid(axis="x",linewidth=0.5)
+        ax1.grid(axis="y",linewidth=0.5)
+
+        ax2.plot(history.history['accuracy'])
+        ax2.plot(history.history['val_accuracy'])
+        ax2.set_title('Accuracy')
+        ax2.set_ylabel('Accuracy')
+        ax2.set_xlabel('Epoch')
+        #ax2.set_ylim(ymin=0, ymax=20)
+        ax2.legend(['Train', 'Validation'], loc='best')
+        ax2.grid(axis="x",linewidth=0.5)
+        ax2.grid(axis="y",linewidth=0.5)
 
     def evaluate_model(self):
         """
