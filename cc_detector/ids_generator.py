@@ -14,10 +14,39 @@ def short_id_gen(id):
 
 
 # for df_players - a df consisting unique player names and ID's
-players_id = pd.DataFrame({'Players': [], 'Player_ID' : []})
+
+def set_players_id_df():
+    players_id = pd.DataFrame({'Players': [], 'Player_ID' : []})
+    return players_id
+
+def players_id_list(input_df):
+    '''generates list with unique player names and IDs to merge with df_players'''
+    players_id = set_players_id_df()
+    black = list(input_df["Black"]) 
+    white = list(input_df["White"])
+    
+    #merge uniqe values from both columns:
+    bw_merged = pd.DataFrame(list(set(black + white)), columns=["Players"])
+    
+    # Player_ID filled with NaNs:
+    players_id = players_id.merge(bw_merged, how="outer", left_on=["Players"], right_on=["Players"])
+    
+    # NaNs replaced with generated IDs
+    nans_to_ids = players_id["Player_ID"].fillna(players_id["Player_ID"].apply(id_generator))
+    
+    #inserting missing IDs to players_id
+    players_id["Player_ID"] = nans_to_ids
+    
+    computer = finding_comp(input_df)
+    players_id = players_id.merge(computer, left_on='Players', right_on='Computer', how='outer')
+    players_id = players_id.replace(np.nan, 'No')
+    players_id.drop(columns='Computer', inplace=True)
+    players_id.rename(columns={'Yes' : 'Computer'}, inplace=True)
+    
+    return players_id
 
 def finding_comp(df_players):
-    ''' taking all players from df_players, who are computer'''
+    ''' returns all players from df_players, who are computer'''
     # checking the White column for computers
     comp1 = df_players.loc[df_players['WhiteIsComp'] == "Yes"]
     comp1 = comp1[['White']].copy()
@@ -39,34 +68,34 @@ def finding_comp(df_players):
     # returns a df with computer names
     return computer
 
-def players_id_df(input_df, players_id):
-    '''generates list with unique player names and IDs to merge with df_players'''
-    #extract black and white columns
-    black = list(input_df["Black"]) 
-    white = list(input_df["White"])
+# def players_id_df(input_df, players_id):
+#     '''generates list with unique player names and IDs to merge with df_players'''
+#     #extract black and white columns
+#     black = list(input_df["Black"]) 
+#     white = list(input_df["White"])
     
-    #merge uniqe values from both columns:
-    bw_merged = pd.DataFrame(list(set(black + white)), columns=["Players"])
+#     #merge uniqe values from both columns:
+#     bw_merged = pd.DataFrame(list(set(black + white)), columns=["Players"])
     
-    # Player_ID column filled with NaNs:
-    players_id = players_id.merge(bw_merged, how="outer", left_on=["Players"], right_on=["Players"])
+#     # Player_ID column filled with NaNs:
+#     players_id = players_id.merge(bw_merged, how="outer", left_on=["Players"], right_on=["Players"])
     
-    # NaNs replaced with generated IDs
-    nans_to_ids = players_id["Player_ID"].fillna(players_id["Player_ID"].apply(id_generator))
+#     # NaNs replaced with generated IDs
+#     nans_to_ids = players_id["Player_ID"].fillna(players_id["Player_ID"].apply(id_generator))
     
-    #inserting missing IDs to players_id
-    players_id["Player_ID"] = nans_to_ids
+#     #inserting missing IDs to players_id
+#     players_id["Player_ID"] = nans_to_ids
 
-    #finding computers in df
-    computer = finding_comp()
+#     #finding computers in df
+#     computer = finding_comp(input)
 
-    #merging df on unique names
-    players_id = players_id.merge(computer, left_on='Players', right_on='Computer', how='outer')
-    players_id = players_id.replace(np.nan, 'No')
-    players_id.drop(columns='Computer', inplace=True)
-    players_id.rename(columns={'Yes' : 'Computer'}, inplace=True)
+#     #merging df on unique names
+#     players_id = players_id.merge(computer, left_on='Players', right_on='Computer', how='outer')
+#     players_id = players_id.replace(np.nan, 'No')
+#     players_id.drop(columns='Computer', inplace=True)
+#     players_id.rename(columns={'Yes' : 'Computer'}, inplace=True)
 
-    return players_id
+#     return players_id
 
 
 def player_id(df_players): 
