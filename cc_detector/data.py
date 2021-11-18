@@ -13,6 +13,8 @@ from cc_detector.move import set_move_dict, move_info_extractor,\
     bitmap_representer, castling_right, en_passant_opp, halfmove_clock,\
     binary_board_df#, move_dict_maker
 
+import pickle
+
 
 class ChessData:
     def __init__(self) -> None:
@@ -37,7 +39,7 @@ class ChessData:
 
     def import_data(
             self,
-            data_path="/Users/manuel/code/VPeron/cc_detector/raw_data/Fics_data_pc_data.pgn",
+            data_path="raw_data/Fics_data_pc_data.pgn",
             import_lim=50):
         '''
         Takes the path to a pgn file as an input as well as a number of
@@ -128,7 +130,15 @@ class ChessData:
         return df_players, df_games, df_moves
 
 
-    def feature_df_maker(self, move_df):
+    def feature_df_maker(self, move_df, training=True):
+        '''
+        Takes a dataframe with moves and transforms them into a 3D numpy array
+        (the result is basically list of time series where each 2D array is the
+        moves of oneplayer in one game and the third dimension represents the
+        games played).
+        Returns two arrays: X (padded) and y.
+        '''
+
         #get binary board representation for each move
         df_wide = binary_board_df(move_df)
 
@@ -142,22 +152,35 @@ class ChessData:
         df_wide_full = df_wide.join(game_infos)
 
         # Generate binary feature that indicates if player is computer
-        df_wide_full["Computer"] = df_wide_full.apply(
-            lambda x: 1 if (
-            (x["WhiteIsComp"] == "Yes") and (x["turn"] == "white")
-            ) or (
-                (x["WhiteIsComp"] == "No") and (x["turn"] == "black")
-                ) else 0,
-                                                    axis=1)
+        if training:
+            df_wide_full["Computer"] = df_wide_full.apply(
+                lambda x: 1 if (
+                (x["WhiteIsComp"] == "Yes") and (x["turn"] == "white")
+                ) or (
+                    (x["WhiteIsComp"] == "No") and (x["turn"] == "black")
+                    ) else 0,
+                axis=1)
+        else:
+            df_wide_full["Computer"] = "NA"
+
 
         # Scale features
-        scaler = MinMaxScaler()
-        df_wide_full["Halfmove_clock"] = scaler.fit_transform(
+        if training:
+            scaler = MinMaxScaler()
+            scaler.fit(df_wide_full[["Halfmove_clock"]])
+            df_wide_full["Halfmove_clock"] = scaler.transform(
+                df_wide_full[["Halfmove_clock"]])
+            with open("models/minmax_scaler.pkl", "wb") as file:
+                pickle.dump(scaler, file)
+        else:
+            scaler = pickle.load(open("models/minmax_scaler.pkl", "rb"))
+            df_wide_full["Halfmove_clock"] = scaler.transform(
             df_wide_full[["Halfmove_clock"]])
 
         #Generate Target vector
-        y = df_wide_full.groupby(by=["Game_ID", "turn"],
-                                sort=False).agg(min)["Computer"].values
+        if training:
+            y = df_wide_full.groupby(by=["Game_ID", "turn"],
+                                    sort=False).agg(min)["Computer"].values
 
         #Split df into white and black games
         df_white = df_wide_full[df_wide_full["turn"] == "white"]
@@ -183,7 +206,10 @@ class ChessData:
                               padding='post',
                               value=-999)
 
-        return X_pad, y
+        if training:
+            return X_pad, y
+        else:
+            return X_pad
 
 
 

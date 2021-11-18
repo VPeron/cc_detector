@@ -43,7 +43,10 @@ def bitmap_representer(board, pieces, squares, move_dict):
     return move_dict
 
 def castling_right(game, board, move_dict, white):
-    move_dict['WhiteIsComp'].append(game.headers.get('WhiteIsComp', 'No'))
+    if ("BlackIsComp" or "WhiteIsComp") in game.headers.keys():
+        move_dict['WhiteIsComp'].append(game.headers.get('WhiteIsComp', 'No'))
+    else:
+        move_dict['WhiteIsComp'].append("NA")
     if white:
         move_dict['turn'].append('white')
         move_dict['Castling_right'].append(
