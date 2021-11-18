@@ -1,4 +1,4 @@
-from api import chessapi
+import chessapi
 
 dfs = chessapi.data()
 
