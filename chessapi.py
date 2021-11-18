@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from cc_detector.data import ChessData
-
+import pandas as pd
+import joblib
 
 
 app = FastAPI()
@@ -21,19 +22,32 @@ def index():
     return {"OK": True}
 
 
-@app.get("/predict")
-def test_epoint(df):
+@app.get("/data")
+def data():
     chessdata = ChessData()
     player_df, game_df, move_df = chessdata.import_data(data_path='raw_data/Fics_data_pc_data.pgn', 
                                                               import_lim=50)
-    if df == 'players':
-        players = player_df['White'].unique()
-        return  {'players': list(players)}
-    if df == 'games':
-        games = game_df['Game_ID']
-        return  {'games': list(games)}
-    if df == 'moves':
-        moves = [move for move in move_df['FEN_moves']]
-        return  {'players': moves}
-    else:
-        return{'result': 'No results'}
+    players = player_df.to_dict()
+    games = game_df.to_dict()
+    moves = move_df.to_dict()
+    return {
+        'players':players,
+        'games':games,
+        'moves':moves
+    }
+    
+@app.get("/predict")
+def predict():
+    file_df = '?'
+    #TODO front end reads file, transforms into dict
+    #TODO get dict into df that model can accept for prediction
+    X_pred_DataFrame = pd.DataFrame(file_df)
+
+    
+    res = joblib.load('../model.joblib')
+    prediction = res.predict(X_pred_DataFrame)
+    
+    return {'prediction': prediction[0]}
+    #TODO return model#s prediction
+    # collect prediction from GCP model -> needs training process pipelined?
+    # https://kitt.lewagon.com/camps/673/lectures/content/07-Data-Engineering_02.html

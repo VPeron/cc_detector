@@ -24,6 +24,7 @@ mlflow
 s3fs
 fastapi
 uvicorn
+streamlit
 
 # utilities
 six>=1.14
