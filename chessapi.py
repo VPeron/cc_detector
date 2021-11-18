@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from cc_detector.data import ChessData
+import pandas as pd
+import joblib
 
 
 app = FastAPI()
@@ -36,7 +38,16 @@ def data():
     
 @app.get("/predict")
 def predict():
-    pass
+    file_df = '?'
+    #TODO front end reads file, transforms into dict
+    #TODO get dict into df that model can accept for prediction
+    X_pred_DataFrame = pd.DataFrame(file_df)
+
+    
+    res = joblib.load('../model.joblib')
+    prediction = res.predict(X_pred_DataFrame)
+    
+    return {'prediction': prediction[0]}
     #TODO return model#s prediction
-    # collect prediction from GCP model -> needs training process pipelined
+    # collect prediction from GCP model -> needs training process pipelined?
     # https://kitt.lewagon.com/camps/673/lectures/content/07-Data-Engineering_02.html
