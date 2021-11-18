@@ -46,7 +46,7 @@ count_lines:
 #       STREAMLIT RUN LOCAL
 # ----------------------------------
 run_streamlit:
-    streamlit run app.py
+	streamlit run app.py
 
 # ----------------------------------
 #      UPLOAD PACKAGE TO PYPI

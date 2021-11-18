@@ -17,7 +17,7 @@ stockfish.set_skill_level(30)
 
 
 # HEADER
-# st.write('# CHESS FILES')
+# st.write('# CHESS FILES') 
 st.write('## Human vs Engine Detection')
 img = "https://images3.alphacoders.com/235/235755.jpg"
 st.image(img)
@@ -25,7 +25,7 @@ st.image(img)
 # DATA
 @st.cache
 def get_data():
-    url_ep = 'http://127.0.0.1:8000/predict'
+    url_ep = 'http://127.0.0.1:8000/data'
     res = requests.get(url_ep)
     result = res.json()
     df_players = pd.DataFrame(result['players'])

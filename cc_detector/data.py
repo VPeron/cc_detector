@@ -37,7 +37,7 @@ class ChessData:
 
     def import_data(
             self,
-            data_path="/Users/manuel/code/VPeron/cc_detector/raw_data/Fics_data_pc_data.pgn",
+            data_path="raw_data/Fics_data_pc_data.pgn",
             import_lim=50):
         '''
         Takes the path to a pgn file as an input as well as a number of
