@@ -5,6 +5,7 @@ import chess
 import chess.pgn
 
 from sklearn.preprocessing import MinMaxScaler
+from tensorflow.keras.preprocessing.sequence import pad_sequences
 
 from cc_detector.player import set_player_dict, player_info_extractor
 from cc_detector.ids_generator import players_id_list
@@ -14,9 +15,9 @@ from cc_detector.move import set_move_dict, move_info_extractor,\
     binary_board_df#, move_dict_maker
 
 import pickle
-from google.cloud import storage    
-from cc_detector.params import BUCKET_TRAIN_DATA_PATH, BUCKET_NAME, GOOGLE_APPLICATION_CREDENTIALS
-
+from google.cloud import storage
+from cc_detector.params import BUCKET_TRAIN_DATA_PATH, BUCKET_NAME, \
+    STORAGE_LOCATION
 
 
 class ChessData:
@@ -40,11 +41,14 @@ class ChessData:
         #Set list of all squares on the board
         self.SQUARES = [i for i in range(64)]
 
+        #Define move limit for data padding
+        self.max_game_length = 100
+
     def import_data(
             self,
             source='local',
-            data_path='raw_data/Fics_data_pc_data.pgn',
-            import_lim=50):
+            import_lim=50,
+            **kwargs):
         '''
         Takes the path to a pgn file as an input as well as a number of
         games to be read from the pgn file (Default: import_lim=50).
@@ -53,7 +57,11 @@ class ChessData:
         if source == 'local':
             data_path = 'raw_data/Fics_data_pc_data.pgn'
         if source == 'gcp':
-            data_path = f"gs://{BUCKET_NAME}/{BUCKET_TRAIN_DATA_PATH}"
+            data_path = "gs://{BUCKET_NAME}/{BUCKET_TRAIN_DATA_PATH}"
+        if 'data_path' in kwargs.keys():
+            data_path = kwargs['data_path']
+
+
         # read file
         # client = storage.Client()
         pgn = open(data_path, encoding='UTF-8')
@@ -140,11 +148,11 @@ class ChessData:
         return df_players, df_games, df_moves
 
 
-    def feature_df_maker(self, move_df, training=True):
+    def feature_df_maker(self, move_df, max_game_length=100, training=True):
         '''
-        Takes a dataframe with moves and transforms them into a list of
-        2D numpy arrays (time series).
-        Returns up to two lists/arrays: X (list) and, if training=True, y (array).
+        Takes a dataframe with moves and transforms them into a padded 3D numpy array
+        (a list of 2D numpy arrays, i.e. time series of the moves within one player's game).
+        Returns up to two arrays: X and, if training=True, y.
         '''
 
         #get binary board representation for each move
@@ -208,12 +216,38 @@ class ChessData:
                 columns=["turn", "WhiteIsComp", "Game_ID", "Computer"])
             games_list.append(np.array(df_b_temp))
 
-        X = games_list
+        # padding arrays
+        X_pad = pad_sequences(
+            games_list,
+            dtype='float32',
+            padding='post',
+            value=-999,
+        )
+
+        if X_pad.shape[1] < max_game_length:
+            array_list = []
+            for game in X_pad:
+                game = np.pad(game,
+                              ((0, (max_game_length - game.shape[0])), (0, 0)),
+                              "constant",
+                              constant_values=(-999., ))
+                array_list.append(game)
+            X_new = np.stack(array_list, axis=0)
+
+        if X_pad.shape[1] > max_game_length:
+            array_list = []
+            for game in X_pad:
+                game = game[0:max_game_length, :]
+                array_list.append(game)
+            X_new = np.stack(array_list, axis=0)
+
+        self.max_game_length = max_game_length
 
         if training:
-            return X, y
+            return X_new, y
         else:
-            return X
+            return X_new
+
 
 
 if __name__ == "__main__":
