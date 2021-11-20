@@ -173,6 +173,7 @@ class Trainer():
         self.mlflow_log_param("dense dropout", dense_dropout)
         self.mlflow_log_param("lstm_start_units", lstm_start_units)
         self.mlflow_log_param("dense_start_units", dense_start_units)
+        self.mlflow_log_param("train_data_size", X_train.shape[0])
 
         self.save_model_to_gcp(model)
 
@@ -210,11 +211,11 @@ class Trainer():
 
     def get_path_to_joblib(self,
                            source="local"):
-        if source == 'local':
-            path_to_joblib = "models/cc_detect_lstm_model.joblib"
+        if source == "local":
+            path = "models/cc_detect_lstm_model.joblib"
         if source == "gcp":
-            pass
-        return path_to_joblib
+            path = ""
+        return path
 
     def evaluate_model(self,
                        X_test,
@@ -224,7 +225,6 @@ class Trainer():
         Takes two numpy arrays (X_test, y_test) and evaluates the model performance.
         """
         path_to_joblib = self.get_path_to_joblib(source=source)
-
         model = self.get_model(path_to_joblib)
         result = model.evaluate(x=X_test, y=y_test)
 
@@ -249,21 +249,19 @@ class Trainer():
         blob = client.blob(storage_location)
         blob.upload_from_filename('cc_detect_lstm_model.joblib')
 
-    def get_model(self,
-                  source="local"):
+    def get_model(self, path_to_joblib):
         '''
         Loads a joblib model from the given path and returns the model.
         '''
-        path_to_joblib = self.get_path_to_joblib(source=source)
         model = joblib.load(path_to_joblib)
         return model
 
-    def predict(self, X, source="local"):
+    def predict(self, X,
+                path_to_joblib="models/cc_detect_lstm_model.joblib"):
         '''
         Predicts if the game (X) was played by a computer or a human.
         Returns a prediction in the form of an array.
         '''
-        path_to_joblib = self.get_path_to_joblib(source=source)
         model = self.get_model(path_to_joblib)
         prediction = model.predict(X)
         return prediction
@@ -298,7 +296,9 @@ if __name__ == "__main__":
 
     #Retrieve data from file
     player_df, game_df, move_df = trainer.get_data(
-        data_path='raw_data/Fics_data_pc_data.pgn', import_lim=100)
+        data_path='raw_data/Fics_data_pc_data.pgn',
+        import_lim=100
+        )
 
     #Transform data into correct shape
     X, y = trainer.transform_move_data(move_df=move_df,
