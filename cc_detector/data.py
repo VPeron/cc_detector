@@ -131,11 +131,9 @@ class ChessData:
 
     def feature_df_maker(self, move_df, training=True):
         '''
-        Takes a dataframe with moves and transforms them into a 3D numpy array
-        (the result is basically list of time series where each 2D array is the
-        moves of oneplayer in one game and the third dimension represents the
-        games played).
-        Returns two arrays: X (padded) and y.
+        Takes a dataframe with moves and transforms them into a list of
+        2D numpy arrays (time series).
+        Returns up to two lists/arrays: X (list) and, if training=True, y (array).
         '''
 
         #get binary board representation for each move
