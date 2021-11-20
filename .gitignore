@@ -12,5 +12,6 @@ raw_data/
 *.json
 =======
 *:Zone.Identifier
+*.json
 
 >>>>>>> master

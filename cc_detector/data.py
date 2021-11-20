@@ -6,7 +6,6 @@ import chess
 import chess.pgn
 
 from sklearn.preprocessing import MinMaxScaler
-from tensorflow.keras.preprocessing.sequence import pad_sequences
 
 from cc_detector.player import set_player_dict, player_info_extractor
 from cc_detector.ids_generator import players_id_list
@@ -14,6 +13,7 @@ from cc_detector.game import set_game_dict, game_info_extractor
 from cc_detector.move import set_move_dict, move_info_extractor,\
     bitmap_representer, castling_right, en_passant_opp, halfmove_clock,\
     binary_board_df#, move_dict_maker
+
 
 from google.cloud import storage    
 from cc_detector.params import BUCKET_TRAIN_DATA_PATH, BUCKET_NAME
@@ -51,6 +51,7 @@ class ChessData:
         games to be read from the pgn file (Default: import_lim=50).
         Returns three Pandas dataframes (df_players, df_games, df_moves).
         '''
+
         client = storage.Client()
         bucket = client.bucket(BUCKET_NAME)
         blobs = list(bucket.list_blobs(prefix='data/'))
@@ -70,7 +71,10 @@ class ChessData:
             pgn = io.StringIO(data)
 
         # read file   
+
         game_counter = 0
+        games_parsed = 0
+        move_counter = 0
 
         #preshape dataframes
         player_dict = set_player_dict()
@@ -127,6 +131,8 @@ class ChessData:
                         #Extract Halfmove clock
                         move_dict = halfmove_clock(board=board,
                                                 move_dict=move_dict)
+                        move_counter += 1
+                    games_parsed += 1
 
                 game_counter += 1
                 if game_counter == import_lim:  # number of games to read
@@ -136,6 +142,9 @@ class ChessData:
                 break
 
         print(f'{game_counter} games read.')
+        print(
+            f'{games_parsed} games with a total number of {move_counter} moves parsed.'
+        )
 
         df_players_temp = pd.DataFrame(players)
         df_games = pd.DataFrame(games)
@@ -146,7 +155,13 @@ class ChessData:
         return df_players, df_games, df_moves
 
 
-    def feature_df_maker(self, move_df):
+    def feature_df_maker(self, move_df, training=True):
+        '''
+        Takes a dataframe with moves and transforms them into a list of
+        2D numpy arrays (time series).
+        Returns up to two lists/arrays: X (list) and, if training=True, y (array).
+        '''
+
         #get binary board representation for each move
         df_wide = binary_board_df(move_df)
 
@@ -160,22 +175,35 @@ class ChessData:
         df_wide_full = df_wide.join(game_infos)
 
         # Generate binary feature that indicates if player is computer
-        df_wide_full["Computer"] = df_wide_full.apply(
-            lambda x: 1 if (
-            (x["WhiteIsComp"] == "Yes") and (x["turn"] == "white")
-            ) or (
-                (x["WhiteIsComp"] == "No") and (x["turn"] == "black")
-                ) else 0,
-                                                    axis=1)
+        if training:
+            df_wide_full["Computer"] = df_wide_full.apply(
+                lambda x: 1 if (
+                (x["WhiteIsComp"] == "Yes") and (x["turn"] == "white")
+                ) or (
+                    (x["WhiteIsComp"] == "No") and (x["turn"] == "black")
+                    ) else 0,
+                axis=1)
+        else:
+            df_wide_full["Computer"] = "NA"
+
 
         # Scale features
-        scaler = MinMaxScaler()
-        df_wide_full["Halfmove_clock"] = scaler.fit_transform(
+        if training:
+            scaler = MinMaxScaler()
+            scaler.fit(df_wide_full[["Halfmove_clock"]])
+            df_wide_full["Halfmove_clock"] = scaler.transform(
+                df_wide_full[["Halfmove_clock"]])
+            with open("models/minmax_scaler.pkl", "wb") as file:
+                pickle.dump(scaler, file)
+        else:
+            scaler = pickle.load(open("models/minmax_scaler.pkl", "rb"))
+            df_wide_full["Halfmove_clock"] = scaler.transform(
             df_wide_full[["Halfmove_clock"]])
 
         #Generate Target vector
-        y = df_wide_full.groupby(by=["Game_ID", "turn"],
-                                sort=False).agg(min)["Computer"].values
+        if training:
+            y = df_wide_full.groupby(by=["Game_ID", "turn"],
+                                    sort=False).agg(min)["Computer"].values
 
         #Split df into white and black games
         df_white = df_wide_full[df_wide_full["turn"] == "white"]
@@ -195,14 +223,12 @@ class ChessData:
                 columns=["turn", "WhiteIsComp", "Game_ID", "Computer"])
             games_list.append(np.array(df_b_temp))
 
-        # padding arrays
-        X_pad = pad_sequences(games_list,
-                              dtype='float32',
-                              padding='post',
-                              value=-999)
+        X = games_list
 
-        return X_pad, y
-
+        if training:
+            return X, y
+        else:
+            return X
 
 
 if __name__ == "__main__":
