@@ -7,9 +7,9 @@ from cc_detector.data import ChessData
 
 from tensorflow.keras.models import Sequential
 from tensorflow.keras import layers, regularizers
-from sklearn.model_selection import train_test_split
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.optimizers import RMSprop
+from tensorflow.keras.preprocessing.sequence import pad_sequences
 
 import joblib
 
@@ -17,6 +17,7 @@ class Trainer():
     def __init__(self) -> None:
 
         self.model = None
+        self.max_game_length = 100
 
     def get_data(self,
                  data_path="raw_data/Fics_data_pc_data.pgn",
@@ -30,20 +31,52 @@ class Trainer():
 
         return player_df, game_df, move_df
 
-    def transform_move_data(self, move_df):
+    def transform_move_data(self, move_df, max_game_length=100, training=True):
         """
-        Takes the move dataframe (move_df) and transforms the data into 4 numpy arrays
-        ready to be passed to an DL model (data is already padded with value -999).
-
-        Returns X_train, X_test, y_train, y_test
+        Takes the move dataframe (move_df) and returns a padded 3D numpy array
+        (padding with value -999). The maximum number of moves for the padding
+        can be specified with max_game_length (default: 100).
+        Also returns y as an numpy array if training=True.
         """
-        X, y = ChessData().feature_df_maker(move_df=move_df, training=True)
+        if training:
+            X, y = ChessData().feature_df_maker(move_df=move_df,
+                                                training=True)
+        else:
+            X = ChessData().feature_df_maker(move_df=move_df,
+                                             training=False)
 
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2)
+        # padding arrays
+        X_pad = pad_sequences(
+            X,
+            dtype='float32',
+            padding='post',
+            value=-999,
+        )
 
-        print("Data has been transformed into the correct format.")
-        return X_train, X_test, y_train, y_test
+        if X_pad.shape[1] < max_game_length:
+            array_list = []
+            for game in X_pad:
+                game = np.pad(game,
+                        ((0,(max_game_length-game.shape[0])),(0,0)),
+                        "constant",
+                        constant_values=(-999,))
+                array_list.append(game)
+            X_new = np.stack(array_list, axis = 0)
+
+        if X_pad.shape[1] > max_game_length:
+            array_list = []
+            for game in X_pad:
+                game = game[0:max_game_length,:]
+                array_list.append(game)
+            X_new = np.stack(array_list, axis = 0)
+
+        self.max_game_length = max_game_length
+
+        print("Data has been transformed into the correct format ✅")
+        if training:
+            return X_new, y
+        else:
+            return X_new
 
     def train_model(self, X_train, y_train, verbose=0):
         """
@@ -57,26 +90,27 @@ class Trainer():
 
         model.add(
             layers.Masking(mask_value=-999,
-                           input_shape=(X_train.shape[1],
-                                        X_train.shape[2])))
+                           input_shape=(self.max_game_length, 771)))
+        model.add(
+            layers.LSTM(units=128,
+                        activation='tanh',
+                        return_sequences=True,
+                        recurrent_dropout=0.3))
         model.add(
             layers.LSTM(units=64,
                         activation='tanh',
-                        return_sequences=True, recurrent_dropout=0.2))
-        model.add(
-            layers.LSTM(units=32,
-                        activation='tanh',
                         return_sequences=False,
-                        recurrent_dropout=0.2))
+                        recurrent_dropout=0.3))
+        model.add(
+            layers.Dense(units=64,
+                         activation='relu',
+                         kernel_regularizer=reg_l1))
+        model.add(layers.Dropout(0.3))
         model.add(
             layers.Dense(units=32,
                          activation='relu',
                          kernel_regularizer=reg_l1))
-        model.add(layers.Dropout(0.2))
-        model.add(
-            layers.Dense(units=16,
-                        activation='relu'))
-        model.add(layers.Dropout(0.2))
+        model.add(layers.Dropout(0.3))
         model.add(
             layers.Dense(units=1,
                         activation="sigmoid"))
@@ -148,32 +182,28 @@ class Trainer():
         model = joblib.load(path_to_joblib)
         return model
 
-    def predict(self, X):
-        model = self.get_model()
+    def predict(self, X, path_to_joblib="models/cc_detect_lstm_model.joblib"):
+        model = self.get_model(path_to_joblib)
         prediction = model.predict(X)
         return prediction
 
     def rtp_input(self,
                   path_to_joblib="models/cc_detect_lstm_model.joblib",
-                  file_path="",
+                  data_file_path="raw_data/Fics_data_pc_data.pgn",
                   white=True):
         '''
         Reads and transforms the content of a pgn file, then returns a
         prediction if the chosen player is a computer or not.
         '''
-        model = self.get_model(path_to_joblib)
-
         player_df, game_df, move_df = ChessData().import_data(
-            data_path=file_path, import_lim=1)
-        X = ChessData().feature_df_maker(move_df=move_df, training=False)
+            data_path=data_file_path, import_lim=1)
+        X_pad = self.transform_move_data(move_df, training=False)
 
         if white:
-            X_eval = X[0,:,:]
+            X_eval = X_pad[0]
         else:
-            X_eval = X[1,:,:]
-
+            X_eval = X_pad[1]
         X_eval = X_eval.reshape(1, X_eval.shape[0], X_eval.shape[1])
 
-        prediction = model.predict(X_eval)
-
+        prediction = self.predict(X_eval, path_to_joblib)
         return prediction

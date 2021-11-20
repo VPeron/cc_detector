@@ -5,7 +5,6 @@ import chess
 import chess.pgn
 
 from sklearn.preprocessing import MinMaxScaler
-from tensorflow.keras.preprocessing.sequence import pad_sequences
 
 from cc_detector.player import set_player_dict, player_info_extractor
 from cc_detector.game import set_game_dict, game_info_extractor
@@ -200,17 +199,12 @@ class ChessData:
                 columns=["turn", "WhiteIsComp", "Game_ID", "Computer"])
             games_list.append(np.array(df_b_temp))
 
-        # padding arrays
-        X_pad = pad_sequences(games_list,
-                              dtype='float32',
-                              padding='post',
-                              value=-999)
+        X = games_list
 
         if training:
-            return X_pad, y
+            return X, y
         else:
-            return X_pad
-
+            return X
 
 
 if __name__ == "__main__":
