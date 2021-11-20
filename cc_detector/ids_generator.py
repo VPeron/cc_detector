@@ -20,7 +20,7 @@ def set_players_id_df():
     return players_id
 
 def players_id_list(input_df):
-    '''generates list with unique player names and IDs to merge with df_players'''
+    '''generates list with unique player names, IDs and Yes/No computer to merge with df_players'''
     players_id = set_players_id_df()
     black = list(input_df["Black"]) 
     white = list(input_df["White"])
