@@ -98,10 +98,11 @@ def finding_comp(df_players):
 #     return players_id
 
 
-def player_id(df_players): 
+def player_id(df_players):
     '''returns a df with 2 new columns and assigns IDs to the player'''
     # merging input_df on white column with players_id
-    m_white = df_players.merge(players_id, left_on=["White"], right_on=['Players'])   #
+    players_id = players_id_list()
+    m_white = df_players.merge(players_id, left_on=["White"], right_on=['Players'])
     m_white['White_ID'] = m_white['Player_ID']
     m_white.drop(columns=['Players', "Player_ID"], inplace=True)
 

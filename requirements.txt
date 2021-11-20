@@ -30,13 +30,8 @@ six>=1.14
 joblib
 memoized-property
 termcolor
-<<<<<<< HEAD
-shortuuid
-uuid
-=======
 uuid
 shortuuid
->>>>>>> master
 
 #chess packages
 chess

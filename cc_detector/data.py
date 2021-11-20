@@ -1,3 +1,4 @@
+from os import read
 import pandas as pd
 import numpy as np
 
@@ -15,7 +16,8 @@ from cc_detector.move import set_move_dict, move_info_extractor,\
     binary_board_df#, move_dict_maker
 
 from google.cloud import storage    
-from cc_detector.params import BUCKET_TRAIN_DATA_PATH, BUCKET_NAME, GOOGLE_APPLICATION_CREDENTIALS
+from cc_detector.params import BUCKET_TRAIN_DATA_PATH, BUCKET_NAME
+import io
 
 
 class ChessData:
@@ -49,13 +51,25 @@ class ChessData:
         games to be read from the pgn file (Default: import_lim=50).
         Returns three Pandas dataframes (df_players, df_games, df_moves).
         '''
+        client = storage.Client()
+        bucket = client.bucket(BUCKET_NAME)
+        blobs = list(bucket.list_blobs(prefix='data/'))
+        # read_output = blobs.download_as_string()
+        print(blobs)
+        
         if source == 'local':
             data_path = 'raw_data/Fics_data_pc_data.pgn'
+            pgn = open(data_path)
         if source == 'gcp':
-            data_path = f"gs://{BUCKET_NAME}/{BUCKET_TRAIN_DATA_PATH}"
-        # read file
-        # client = storage.Client()
-        pgn = open(data_path, encoding='UTF-8')
+            data_path = f"{BUCKET_TRAIN_DATA_PATH}"
+            client = storage.Client()
+            bucket = client.get_bucket(BUCKET_NAME)
+            blob = bucket.get_blob(data_path)
+            data = blob.download_as_string()
+            data = data.decode('utf-8')
+            pgn = io.StringIO(data)
+
+        # read file   
         game_counter = 0
 
         #preshape dataframes
