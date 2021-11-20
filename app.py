@@ -36,31 +36,31 @@ def get_data():
 df_players, df_games = get_data()
 
 
-# SIDEBAR
-def sidebar():
-    """
-    sidebar dropdown player/games list
-    """
-    # title
-    st.sidebar.write('## Local Viewbar')
-    st.sidebar.write('### Computer vs player files')
-    # dropdown
-    add_selectbox = st.sidebar.selectbox(
-        "Select list view.",
-        ("players", "games")
-    )
-    if add_selectbox == 'players':
-        white = df_players['White'].unique()
-        black = df_players['Black'].unique()
-        players = np.concatenate((white, black))
-        st.sidebar.write(players)
+# # SIDEBAR
+# def sidebar():
+#     """
+#     sidebar dropdown player/games list
+#     """
+#     # title
+#     st.sidebar.write('## Local Viewbar')
+#     st.sidebar.write('### Computer vs player files')
+#     # dropdown
+#     add_selectbox = st.sidebar.selectbox(
+#         "Select list view.",
+#         ("players", "games")
+#     )
+#     if add_selectbox == 'players':
+#         white = df_players['White'].unique()
+#         black = df_players['Black'].unique()
+#         players = np.concatenate((white, black))
+#         st.sidebar.write(players)
         
-    if add_selectbox == 'games':
-        st.sidebar.write('See Mainscreen View')
-        st.write('### Local Games')
-        st.write(df_games)
+#     if add_selectbox == 'games':
+#         st.sidebar.write('See Mainscreen View')
+#         st.write('### Local Games')
+#         st.write(df_games)
         
-sidebar()
+# sidebar()
 
 
 def sidebar_player_search():
