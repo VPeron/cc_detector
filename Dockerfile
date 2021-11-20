@@ -4,7 +4,7 @@ FROM python:3.8.6-buster
 # code that loads model
 COPY cc_detector/ cc_detector/
 # API code
-COPY chessapi.py chessapi.py
+COPY chessapi.py /chessapi.py
 # trained model
 # COPY model.joblib model.joblib
 COPY requirements.txt /requirements.txt
