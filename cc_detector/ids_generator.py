@@ -20,7 +20,7 @@ def set_players_id_df():
     return players_id
 
 def players_id_list(input_df):
-    '''generates list with unique player names and IDs to merge with df_players'''
+    '''generates list with unique player names, IDs and Yes/No computer to merge with df_players'''
     players_id = set_players_id_df()
     black = list(input_df["Black"]) 
     white = list(input_df["White"])
@@ -98,19 +98,19 @@ def finding_comp(df_players):
 #     return players_id
 
 
-# def player_id(df_players): 
-#     '''returns a df with 2 new columns and assigns IDs to the player'''
-#     # merging input_df on white column with players_id
-#     m_white = df_players.merge(players_id, left_on=["White"], right_on=['Players'])   #
-#     m_white['White_ID'] = m_white['Player_ID']
-#     m_white.drop(columns=['Players', "Player_ID"], inplace=True)
+def player_id(df_players): 
+    '''returns a df with 2 new columns and assigns IDs to the player'''
+    # merging input_df on white column with players_id
+    m_white = df_players.merge(players_id, left_on=["White"], right_on=['Players'])   #
+    m_white['White_ID'] = m_white['Player_ID']
+    m_white.drop(columns=['Players', "Player_ID"], inplace=True)
 
-#     # merging input_df on black column with players_id
-#     m_bw = m_white.merge(players_id, left_on=["Black"], right_on=['Players']).astype(object)
-#     m_bw['Black_ID'] = m_bw['Player_ID']
-#     m_bw.drop(columns=['Players', "Player_ID"], inplace=True)
-#     df_players = m_bw
-#     return df_players
+    # merging input_df on black column with players_id
+    m_bw = m_white.merge(players_id, left_on=["Black"], right_on=['Players']).astype(object)
+    m_bw['Black_ID'] = m_bw['Player_ID']
+    m_bw.drop(columns=['Players', "Player_ID"], inplace=True)
+    df_players = m_bw
+    return df_players
 
 
 def game_id(df_games):
@@ -156,3 +156,4 @@ def find_and_replace_duplicates(df, subset):
             df[subset] = df[subset].where(~is_dup, df[subset].apply(id_generator))
         else: print(f'\u2713 no duplicates in {subset}s')
         break
+
