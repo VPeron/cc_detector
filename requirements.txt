@@ -24,7 +24,6 @@ mlflow
 s3fs
 fastapi
 uvicorn
-streamlit
 
 # utilities
 six>=1.14
@@ -38,4 +37,3 @@ stockfish
 
 #viz
 matplotlib
-seaborn
