@@ -7,12 +7,16 @@ import chess.pgn
 from sklearn.preprocessing import MinMaxScaler
 
 from cc_detector.player import set_player_dict, player_info_extractor
+from cc_detector.ids_generator import players_id_list
 from cc_detector.game import set_game_dict, game_info_extractor
 from cc_detector.move import set_move_dict, move_info_extractor,\
     bitmap_representer, castling_right, en_passant_opp, halfmove_clock,\
     binary_board_df#, move_dict_maker
 
 import pickle
+from google.cloud import storage    
+from cc_detector.params import BUCKET_TRAIN_DATA_PATH, BUCKET_NAME, GOOGLE_APPLICATION_CREDENTIALS
+
 
 
 class ChessData:
@@ -38,15 +42,20 @@ class ChessData:
 
     def import_data(
             self,
-            data_path="raw_data/Fics_data_pc_data.pgn",
+            source='local',
+            data_path='raw_data/Fics_data_pc_data.pgn',
             import_lim=50):
         '''
         Takes the path to a pgn file as an input as well as a number of
         games to be read from the pgn file (Default: import_lim=50).
-
         Returns three Pandas dataframes (df_players, df_games, df_moves).
         '''
+        if source == 'local':
+            data_path = 'raw_data/Fics_data_pc_data.pgn'
+        if source == 'gcp':
+            data_path = f"gs://{BUCKET_NAME}/{BUCKET_TRAIN_DATA_PATH}"
         # read file
+        # client = storage.Client()
         pgn = open(data_path, encoding='UTF-8')
         game_counter = 0
         games_parsed = 0
@@ -122,9 +131,11 @@ class ChessData:
             f'{games_parsed} games with a total number of {move_counter} moves parsed.'
         )
 
-        df_players = pd.DataFrame(players)
+        df_players_temp = pd.DataFrame(players)
         df_games = pd.DataFrame(games)
         df_moves = pd.DataFrame(move_dict)
+
+        df_players = players_id_list(df_players_temp)
 
         return df_players, df_games, df_moves
 
