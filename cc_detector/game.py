@@ -1,3 +1,5 @@
+from cc_detector.ids_generator import game_id
+
 
 def set_game_dict():
     game_dict = {

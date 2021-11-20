@@ -35,6 +35,7 @@ def player_info_extractor(game, player_dict):
 
     return player_dict
 
+<<<<<<< HEAD
 #df_players = pd.DataFrame(player_dict)
 
 
@@ -63,3 +64,6 @@ def players_id_list(input_df):
     players_id.rename(columns={'Yes' : 'Computer'}, inplace=True)
     
     return players_id
+=======
+
+>>>>>>> master
