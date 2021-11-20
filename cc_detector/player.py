@@ -34,5 +34,3 @@ def player_info_extractor(game, player_dict):
     player_dict['WhiteIsComp'].append(game.headers.get('WhiteIsComp', 'No'))
 
     return player_dict
-
-

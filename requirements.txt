@@ -24,7 +24,6 @@ mlflow
 s3fs
 fastapi
 uvicorn
-streamlit
 
 # utilities
 six>=1.14
@@ -34,10 +33,10 @@ termcolor
 uuid
 shortuuid
 
+
 #chess packages
 chess
 stockfish
 
 #viz
 matplotlib
-seaborn

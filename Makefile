@@ -42,12 +42,6 @@ count_lines:
 	@echo ''
 
 # ----------------------------------
-#       STREAMLIT RUN LOCAL
-# ----------------------------------
-run_streamlit:
-	streamlit run app.py
-
-# ----------------------------------
 #      UPLOAD PACKAGE TO PYPI
 # ----------------------------------
 PYPI_USERNAME=<AUTHOR>
