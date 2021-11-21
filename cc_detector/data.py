@@ -17,7 +17,7 @@ from cc_detector.move import set_move_dict, move_info_extractor,\
 
 import pickle
 from google.cloud import storage
-from cc_detector.params import BUCKET_TRAIN_DATA_PATH, BUCKET_NAME, STORAGE_LOCATION
+from cc_detector.params import BUCKET_TRAIN_DATA_PATH, BUCKET_NAME, SCALER_STORAGE_LOCATION
 import io
 
 
@@ -62,9 +62,10 @@ class ChessData:
         ## read_output = blobs.download_as_string()
         #print(blobs)
 
-        if source == 'local':
+        if ((source == 'local') & ('data_path' not in kwargs.keys())):
             data_path = 'raw_data/Fics_data_pc_data.pgn'
             pgn = open(data_path, encoding='UTF-8')
+
         if source == 'gcp':
             data_path = f"{BUCKET_TRAIN_DATA_PATH}"
             client = storage.Client()
@@ -74,8 +75,11 @@ class ChessData:
             data = data.decode('utf-8')
             pgn = io.StringIO(data)
 
-        # read file
+        if 'data_path' in kwargs.keys():
+            data_path = kwargs['data_path']
+            pgn = open(data_path, encoding='UTF-8')
 
+        # read file
         game_counter = 0
         games_parsed = 0
         move_counter = 0
@@ -151,15 +155,19 @@ class ChessData:
         )
 
         df_players_temp = pd.DataFrame(players)
+
         df_games = pd.DataFrame(games)
         df_moves = pd.DataFrame(move_dict)
-
         df_players = players_id_list(df_players_temp)
 
         return df_players, df_games, df_moves
 
 
-    def feature_df_maker(self, move_df, max_game_length=100, training=True):
+    def feature_df_maker(self,
+                         move_df,
+                         max_game_length=100,
+                         training=True,
+                         source="local"):
         '''
         Takes a dataframe with moves and transforms them into a padded 3D numpy array
         (a list of 2D numpy arrays, i.e. time series of the moves within one player's game).
@@ -190,19 +198,29 @@ class ChessData:
         else:
             df_wide_full["Computer"] = "NA"
 
-
         # Scale features
         if training:
             scaler = MinMaxScaler()
             scaler.fit(df_wide_full[["Halfmove_clock"]])
             df_wide_full["Halfmove_clock"] = scaler.transform(
                 df_wide_full[["Halfmove_clock"]])
-            with open("models/minmax_scaler.pkl", "wb") as file:
-                pickle.dump(scaler, file)
+            if source=="local":
+                with open("models/minmax_scaler.pkl", "wb") as file:
+                    pickle.dump(scaler, file)
+            if source=="gcp":
+                client = storage.Client()
+                bucket = client.get_bucket(BUCKET_NAME)
+                blob = bucket.get_blob(SCALER_STORAGE_LOCATION)
+                pickle_out = pickle.dumps(scaler)
+                blob.upload_from_string(pickle_out)
         else:
-            scaler = pickle.load(open("models/minmax_scaler.pkl", "rb"))
-            df_wide_full["Halfmove_clock"] = scaler.transform(
-            df_wide_full[["Halfmove_clock"]])
+            if source=="local":
+                scaler = pickle.load(open("models/minmax_scaler.pkl", "rb"))
+                df_wide_full["Halfmove_clock"] = scaler.transform(
+                df_wide_full[["Halfmove_clock"]])
+            if source=="gcp":
+                pass
+
 
         #Generate Target vector
         if training:

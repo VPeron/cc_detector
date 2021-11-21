@@ -16,7 +16,7 @@ import mlflow
 from mlflow.tracking import MlflowClient
 import joblib
 from cc_detector.params import BUCKET_TRAIN_DATA_PATH, BUCKET_NAME, \
-    STORAGE_LOCATION
+    MODEL_STORAGE_LOCATION
 from google.cloud import storage
 
 
@@ -59,19 +59,22 @@ class Trainer():
 
 
     ###Data import and processing; Training functions
-    def get_data(self,
-                 data_path="raw_data/Fics_data_pc_data.pgn",
-                 import_lim=1000) -> DataFrame:
+    def get_data(self, source='local', import_lim=1000, **kwargs) -> DataFrame:
         '''
         Takes a path to a pgn file (data_path) and a max. number of games read
         (default: import_lim=1000), returns three dataframes (player_df, game_df, move_df).
         '''
-        player_df, game_df, move_df = ChessData().import_data(data_path=data_path,
-                                                              import_lim=import_lim)
+        player_df, game_df, move_df = ChessData().import_data(source=source,
+                                                              import_lim=import_lim,
+                                                              **kwargs)
 
         return player_df, game_df, move_df
 
-    def transform_move_data(self, move_df, max_game_length=100, training=True):
+    def transform_move_data(self,
+                            move_df,
+                            max_game_length=100,
+                            training=True,
+                            source="local"):
         """
         Takes the move dataframe (move_df) and returns a padded 3D numpy array
         (padding with value -999). The maximum number of moves for the padding
@@ -82,7 +85,8 @@ class Trainer():
             X, y = ChessData().feature_df_maker(
                 move_df=move_df,
                 max_game_length=max_game_length,
-                training=True
+                training=True,
+                source=source
                 )
             self.max_game_length = max_game_length
 
@@ -182,6 +186,23 @@ class Trainer():
 
         return history
 
+    def evaluate_model(self, X_test, y_test, source='local'):
+        """
+        Takes two numpy arrays (X_test, y_test) and evaluates the model performance.
+        """
+        path_to_joblib = self.get_path_to_joblib(source=source)
+        model = self.get_model(path_to_joblib)
+        result = model.evaluate(x=X_test, y=y_test)
+
+        self.mlflow_log_metric("test loss", result[0])
+        self.mlflow_log_metric("test accuracy", result[1])
+
+        print(f'''Evaluation has been logged to MLflow:
+              https://mlflow.lewagon.co/#/experiments/21242
+              +++++++++++++++++++++++++++++++++++++++++++++
+              The accuracy of the model is {result[1]}.''')
+        return result
+
     def plot_train_history(self, history):
         '''
         Plots the training history (loss and accuracy curve)
@@ -216,37 +237,16 @@ class Trainer():
             path = ""
         return path
 
-    def evaluate_model(self,
-                       X_test,
-                       y_test,
-                       source='local'):
-        """
-        Takes two numpy arrays (X_test, y_test) and evaluates the model performance.
-        """
-        path_to_joblib = self.get_path_to_joblib(source=source)
-        model = self.get_model(path_to_joblib)
-        result = model.evaluate(x=X_test, y=y_test)
-
-        self.mlflow_log_metric("test loss", result[0])
-        self.mlflow_log_metric("test accuracy", result[1])
-
-        print('''Evaluation has been logged to MLflow:
-              https://mlflow.lewagon.co/#/experiments/21242''')
-        return result
-
     def save_model_to_gcp(self,
                           model):
-        """ method that saves the model into a .joblib file and uploads it
+        """ Method that saves the model into a .joblib file and uploads it
         on Google Storage /models folder """
         joblib.dump(model, 'models/cc_detect_lstm_model.joblib')
-        self.gcp_upload()
-        print("Uploaded model.joblib to gcp cloud storage")
-
-    def gcp_upload(self):
         client = storage.Client().bucket(BUCKET_NAME)
-        storage_location = STORAGE_LOCATION
+        storage_location = MODEL_STORAGE_LOCATION
         blob = client.blob(storage_location)
-        blob.upload_from_filename('cc_detect_lstm_model.joblib')
+        blob.upload_from_filename('models/cc_detect_lstm_model.joblib')
+        print("Uploaded model.joblib to gcp cloud storage")
 
     def get_model(self, path_to_joblib):
         '''
@@ -256,11 +256,12 @@ class Trainer():
         return model
 
     def predict(self, X,
-                path_to_joblib="models/cc_detect_lstm_model.joblib"):
+                source='local'):
         '''
         Predicts if the game (X) was played by a computer or a human.
         Returns a prediction in the form of an array.
         '''
+        path_to_joblib = self.get_path_to_joblib(source=source)
         model = self.get_model(path_to_joblib)
         prediction = model.predict(X)
         return prediction
@@ -283,9 +284,7 @@ class Trainer():
             X_eval = X_pad[1]
         X_eval = X_eval.reshape(1, X_eval.shape[0], X_eval.shape[1])
 
-        path_to_joblib = self.get_path_to_joblib(source=source)
-
-        prediction = self.predict(X_eval, path_to_joblib)
+        prediction = self.predict(X_eval, source=source)
         return prediction
 
 
@@ -295,14 +294,15 @@ if __name__ == "__main__":
 
     #Retrieve data from file
     player_df, game_df, move_df = trainer.get_data(
-        data_path='raw_data/Fics_data_pc_data.pgn',
-        import_lim=100
+        source="gcp",
+        import_lim=2000
         )
 
     #Transform data into correct shape
     X, y = trainer.transform_move_data(move_df=move_df,
                                        max_game_length=100,
-                                       training=True)
+                                       training=True,
+                                       source='gcp')
 
     #Split Data into train and test set
     X_train, X_test, y_train, y_test = train_test_split(X, y,
@@ -311,5 +311,5 @@ if __name__ == "__main__":
     #Train model
     trainer.train_model(X_train, y_train, verbose=0)
 
-    #Evaluate model
-    trainer.evaluate_model(X_test, y_test)
+    ##Evaluate model
+    #trainer.evaluate_model(X_test, y_test, source='local')

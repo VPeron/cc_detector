@@ -72,6 +72,7 @@ LOCAL_PATH='raw_data/Fics_data_pc_data.pgn'
 
 # bucket directory in which to store the uploaded file (`data` is an arbitrary name that we choose to use)
 BUCKET_FOLDER=data
+BUCKET_TRAINING_FOLDER = 'trainings'
 
 # name for the uploaded file inside of the bucket (we choose not to rename the file that we upload)
 BUCKET_FILE_NAME=$(shell basename ${LOCAL_PATH})
@@ -83,7 +84,7 @@ RUNTIME_VERSION=1.15
 PACKAGE_NAME=cc_detector
 FILENAME=trainer
 
-JOB_NAME=taxi_fare_training_pipeline_$(shell date +'%Y%m%d_%H%M%S')
+JOB_NAME=cc_detector_training_$(shell date +'%Y%m%d_%H%M%S')
 
 set_project:
 	@gcloud config set project ${PROJECT_ID}
@@ -93,6 +94,9 @@ create_bucket:
 
 upload_data:
 	@gsutil cp ${LOCAL_PATH} gs://${BUCKET_NAME}/${BUCKET_FOLDER}/${BUCKET_FILE_NAME}
+
+run_locally:
+	@python -m ${PACKAGE_NAME}.${FILENAME}
 
 gcp_submit_training:
 	gcloud ai-platform jobs submit training ${JOB_NAME} \
