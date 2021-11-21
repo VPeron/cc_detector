@@ -98,10 +98,11 @@ def finding_comp(df_players):
 #     return players_id
 
 
-def player_id(df_players): 
+def player_id(df_players):
     '''returns a df with 2 new columns and assigns IDs to the player'''
     # merging input_df on white column with players_id
-    m_white = df_players.merge(players_id, left_on=["White"], right_on=['Players'])   #
+    players_id = players_id_list()
+    m_white = df_players.merge(players_id, left_on=["White"], right_on=['Players'])
     m_white['White_ID'] = m_white['Player_ID']
     m_white.drop(columns=['Players', "Player_ID"], inplace=True)
 
@@ -156,4 +157,3 @@ def find_and_replace_duplicates(df, subset):
             df[subset] = df[subset].where(~is_dup, df[subset].apply(id_generator))
         else: print(f'\u2713 no duplicates in {subset}s')
         break
-
