@@ -209,8 +209,8 @@ class ChessData:
                     pickle.dump(scaler, file)
             if source=="gcp":
                 client = storage.Client()
-                bucket = client.get_bucket(BUCKET_NAME)
-                blob = bucket.get_blob(SCALER_STORAGE_LOCATION)
+                bucket = client.bucket(BUCKET_NAME)
+                blob = bucket.blob(SCALER_STORAGE_LOCATION)
                 pickle_out = pickle.dumps(scaler)
                 blob.upload_from_string(pickle_out)
         else:
