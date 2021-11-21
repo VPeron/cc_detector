@@ -175,11 +175,10 @@ class Trainer():
         self.mlflow_log_param("dense_start_units", dense_start_units)
         self.mlflow_log_param("train_data_size", X_train.shape[0])
 
-        self.save_model_to_gcp(model)
+        print('''Model has been trained and saved 💪 Training params have been logged to MLflow:
+        https://mlflow.lewagon.co/#/experiments/21242''')
 
-        print('''Model has been trained and saved 💪
-              Training params have been logged to MLflow:
-              https://mlflow.lewagon.co/#/experiments/21242''')
+        self.save_model_to_gcp(model)
 
         return history
 
