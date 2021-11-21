@@ -44,7 +44,6 @@ class ChessData:
     def import_data(
             self,
             source='local',
-            data_path='raw_data/Fics_data_pc_data.pgn',
             import_lim=50):
         '''
         Takes the path to a pgn file as an input as well as a number of
@@ -52,15 +51,15 @@ class ChessData:
         Returns three Pandas dataframes (df_players, df_games, df_moves).
         '''
 
-        client = storage.Client()
-        bucket = client.bucket(BUCKET_NAME)
-        blobs = list(bucket.list_blobs(prefix='data/'))
-        # read_output = blobs.download_as_string()
-        print(blobs)
+        #client = storage.Client()
+        #bucket = client.bucket(BUCKET_NAME)
+        #blobs = list(bucket.list_blobs(prefix='data/'))
+        ## read_output = blobs.download_as_string()
+        #print(blobs)
         
         if source == 'local':
             data_path = 'raw_data/Fics_data_pc_data.pgn'
-            pgn = open(data_path)
+            pgn = open(data_path, encoding='UTF-8')
         if source == 'gcp':
             data_path = f"{BUCKET_TRAIN_DATA_PATH}"
             client = storage.Client()
