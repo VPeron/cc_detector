@@ -5,10 +5,11 @@ twine
 wheel>=0.29
 
 # data science
-numpy
+numpy>=1.17
 pandas
 scikit-learn
 tensorflow==2.7.0
+mlflow
 
 # tests/linter
 black
