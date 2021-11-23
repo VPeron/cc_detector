@@ -1,3 +1,4 @@
+from typing_extensions import ParamSpecArgs
 import pandas as pd
 import numpy as np
 from pandas.core.frame import DataFrame
@@ -9,29 +10,72 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras import layers, regularizers
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.optimizers import RMSprop
-from tensorflow.keras.preprocessing.sequence import pad_sequences
+from sklearn.model_selection import train_test_split
 
+from memoized_property import memoized_property
+import mlflow
+from mlflow.tracking import MlflowClient
 import joblib
+from cc_detector.params import BUCKET_TRAIN_DATA_PATH, BUCKET_NAME, \
+    MODEL_STORAGE_LOCATION
+from google.cloud import storage
+
 
 class Trainer():
-    def __init__(self) -> None:
+    MLFLOW_URI = "https://mlflow.lewagon.co/"
 
+
+    def __init__(self) -> None:
         self.model = None
         self.max_game_length = 100
+        self.experiment_name = "DE-BERLIN-673-mclemens-cc_detect"
 
-    def get_data(self,
-                 data_path="raw_data/Fics_data_pc_data.pgn",
-                 import_lim=1000) -> DataFrame:
+    ## MLflow functions
+    def set_experiment_name(self, experiment_name):
+        '''defines the experiment name for MLFlow'''
+        self.experiment_name = experiment_name
+
+    @memoized_property
+    def mlflow_client(self):
+        mlflow.set_tracking_uri(self.MLFLOW_URI)
+        return MlflowClient()
+
+    @memoized_property
+    def mlflow_experiment_id(self):
+        try:
+            return self.mlflow_client.create_experiment(self.experiment_name)
+        except BaseException:
+            return self.mlflow_client.get_experiment_by_name(
+                self.experiment_name).experiment_id
+
+    @memoized_property
+    def mlflow_run(self):
+        return self.mlflow_client.create_run(self.mlflow_experiment_id)
+
+    def mlflow_log_param(self, key, value):
+        self.mlflow_client.log_param(self.mlflow_run.info.run_id, key, value)
+
+    def mlflow_log_metric(self, key, value):
+        self.mlflow_client.log_metric(self.mlflow_run.info.run_id, key, value)
+
+
+    ###Data import and processing; Training functions
+    def get_data(self, source='local', import_lim=1000, **kwargs) -> DataFrame:
         '''
         Takes a path to a pgn file (data_path) and a max. number of games read
         (default: import_lim=1000), returns three dataframes (player_df, game_df, move_df).
         '''
-        player_df, game_df, move_df = ChessData().import_data(data_path=data_path,
-                                                              import_lim=import_lim)
+        player_df, game_df, move_df = ChessData().import_data(source=source,
+                                                              import_lim=import_lim,
+                                                              **kwargs)
 
         return player_df, game_df, move_df
 
-    def transform_move_data(self, move_df, max_game_length=100, training=True):
+    def transform_move_data(self,
+                            move_df,
+                            max_game_length=100,
+                            training=True,
+                            source="local"):
         """
         Takes the move dataframe (move_df) and returns a padded 3D numpy array
         (padding with value -999). The maximum number of moves for the padding
@@ -39,53 +83,46 @@ class Trainer():
         Also returns y as an numpy array if training=True.
         """
         if training:
-            X, y = ChessData().feature_df_maker(move_df=move_df,
-                                                training=True)
+            X, y = ChessData().feature_df_maker(
+                move_df=move_df,
+                max_game_length=max_game_length,
+                training=True,
+                source=source
+                )
+            self.max_game_length = max_game_length
+
+            print("""Data has been transformed into the correct format. ✅
+                  Training mode was chosen (X and y will be returned).""")
+
+            return X, y
+
         else:
             X = ChessData().feature_df_maker(move_df=move_df,
-                                             training=False)
+                                             max_game_length=max_game_length,
+                                             training=False,
+                                             source=source)
+            self.max_game_length = max_game_length
 
-        # padding arrays
-        X_pad = pad_sequences(
-            X,
-            dtype='float32',
-            padding='post',
-            value=-999,
-        )
+            print("""Data has been transformed into the correct format. ✅
+            Training mode was disabled (Only X will be returned).""")
+            return X
 
-        if X_pad.shape[1] < max_game_length:
-            array_list = []
-            for game in X_pad:
-                game = np.pad(game,
-                        ((0,(max_game_length-game.shape[0])),(0,0)),
-                        "constant",
-                        constant_values=(-999.,))
-                array_list.append(game)
-            X_new = np.stack(array_list, axis = 0)
 
-        if X_pad.shape[1] > max_game_length:
-            array_list = []
-            for game in X_pad:
-                game = game[0:max_game_length,:]
-                array_list.append(game)
-            X_new = np.stack(array_list, axis = 0)
-
-        self.max_game_length = max_game_length
-
-        print("Data has been transformed into the correct format ✅")
-        if training:
-            return X_new, y
-        else:
-            return X_new
-
-    def train_model(self, X_train, y_train, verbose=0):
+    def train_model(self, X_train, y_train,
+                    recurrent_dropout=0.3,
+                    dense_dropout=0.3,
+                    l1_reg_rate=0.001,
+                    lstm_start_units=128,
+                    dense_start_units=64,
+                    verbose=0,
+                    **kwargs):
         """
         Builds an LSTM model, compiles it, and then fits it to the data transformed
         with the transform_data() function. Returns the trained model
         """
-        reg_l1 = regularizers.L1(0.001)
-        #reg_l2 = regularizers.L2(0.01)
-        #reg_l1_l2 = regularizers.l1_l2(l1=0.005, l2=0.0005)
+        reg_l1 = regularizers.L1(l1_reg_rate)
+        if 'l2_reg_rate' in kwargs.keys():
+            reg_l2 = regularizers.L2(kwargs['l2_reg_rate'])
 
         model = Sequential()
 
@@ -93,25 +130,25 @@ class Trainer():
             layers.Masking(mask_value=-999,
                            input_shape=(self.max_game_length, 771)))
         model.add(
-            layers.LSTM(units=128,
+            layers.LSTM(units=lstm_start_units,
                         activation='tanh',
                         return_sequences=True,
-                        recurrent_dropout=0.3))
+                        recurrent_dropout=recurrent_dropout))
         model.add(
-            layers.LSTM(units=64,
+            layers.LSTM(units=int(lstm_start_units / 2),
                         activation='tanh',
                         return_sequences=False,
-                        recurrent_dropout=0.3))
+                        recurrent_dropout=recurrent_dropout))
         model.add(
-            layers.Dense(units=64,
+            layers.Dense(units=dense_start_units,
                          activation='relu',
                          kernel_regularizer=reg_l1))
-        model.add(layers.Dropout(0.3))
+        model.add(layers.Dropout(dense_dropout))
         model.add(
-            layers.Dense(units=32,
+            layers.Dense(units=int(dense_start_units / 2),
                          activation='relu',
                          kernel_regularizer=reg_l1))
-        model.add(layers.Dropout(0.3))
+        model.add(layers.Dropout(dense_dropout))
         model.add(
             layers.Dense(units=1,
                         activation="sigmoid"))
@@ -134,11 +171,43 @@ class Trainer():
                   verbose=verbose)
 
         self.model = model
-        joblib.dump(model, 'models/cc_detect_lstm_model.joblib')
+        self.mlflow_log_param("model", "Sequential: LSTM (2 LSTM layers, 2 Dense layers)")
+        self.mlflow_log_param("l1 regularizer rate", l1_reg_rate)
+        self.mlflow_log_param("recurrent dropout", recurrent_dropout)
+        self.mlflow_log_param("dense dropout", dense_dropout)
+        self.mlflow_log_param("lstm_start_units", lstm_start_units)
+        self.mlflow_log_param("dense_start_units", dense_start_units)
+        self.mlflow_log_param("train_data_size", X_train.shape[0])
 
-        print("Model has been trained and saved 💪")
+        print('''Model has been trained and saved 💪 Training params have been logged to MLflow:
+        https://mlflow.lewagon.co/#/experiments/21242''')
+
+        self.save_model_to_gcp(model)
 
         return history
+
+    def evaluate_model(self, X_test, y_test, source='local'):
+        """
+        Takes two numpy arrays (X_test, y_test) and evaluates the model performance.
+        """
+        if source == "local":
+            path_to_joblib = "models/cc_detect_lstm_model.joblib"
+            model = self.load_model(path_to_joblib)
+        if source == "gcp":
+            model = self.load_model_from_gcp()
+
+        result = model.evaluate(x=X_test, y=y_test)
+
+        self.mlflow_log_metric("test loss", result[0])
+        self.mlflow_log_metric("test accuracy", result[1])
+
+        print(f'''Evaluation has been logged to MLflow:
+              https://mlflow.lewagon.co/#/experiments/21242
+              +++++++++++++++++++++++++++++++++++++++++++++
+              The accuracy of the model is {result[1]}.''')
+        return result
+
+### plotting training history
 
     def plot_train_history(self, history):
         '''
@@ -166,47 +235,68 @@ class Trainer():
         ax2.grid(axis="x",linewidth=0.5)
         ax2.grid(axis="y",linewidth=0.5)
 
-    def evaluate_model(self, X_test, y_test):
-        """
-        Takes two numpy arrays (X_test, y_test) and evaluates the model performance.
-        """
-        result = self.model.evaluate(x=X_test, y=y_test)
 
-        return result
+## Functions that deal with model storing and loading
 
-    def get_model(self, path_to_joblib="models/cc_detect_lstm_model.joblib"):
+    def save_model(self, model, path= "models/cc_detect_lstm_model.joblib"):
+        '''
+        Saves the model locally in the form of a joblib file.
+        '''
+        joblib.dump(model, path)
+        print(f"Model.joblib was saved locally under {path}.")
+
+    def save_model_to_gcp(self,
+                          model):
+        '''
+        Method that saves the model into a .joblib file and uploads it
+        on Google Storage /models folder
+        '''
+        joblib.dump(model, 'cc_detect_lstm_model.joblib')
+        client = storage.Client().bucket(BUCKET_NAME)
+        storage_location = MODEL_STORAGE_LOCATION
+        blob = client.blob(storage_location)
+        blob.upload_from_filename('cc_detect_lstm_model.joblib')
+        print("Uploaded model.joblib to gcp cloud storage.")
+
+    def load_model(self, path_to_joblib="models/cc_detect_lstm_model.joblib"):
         '''
         Loads a joblib model from the given path and returns the model.
         '''
         model = joblib.load(path_to_joblib)
         return model
 
-    def predict(self, X, path_to_joblib="models/cc_detect_lstm_model.joblib"):
-        '''
-        Predicts if the game (X) was played by a computer or a human.
-        Returns a prediction in the form of an array.
-        '''
-        model = self.get_model(path_to_joblib)
-        prediction = model.predict(X)
-        return prediction
+    def load_model_from_gcp(self):
+        client = storage.Client().bucket(BUCKET_NAME)
+        blob = client.blob(MODEL_STORAGE_LOCATION)
+        blob.download_to_filename('cc_detect_lstm_model.joblib')
+        print("Model downloaded from Google Cloud Storage")
+        model = joblib.load('cc_detect_lstm_model.joblib')
+        return model
 
-    def rtp_input(self,
-                  path_to_joblib="models/cc_detect_lstm_model.joblib",
-                  data_file_path="raw_data/Fics_data_pc_data.pgn",
-                  white=True):
-        '''
-        Reads and transforms the content of a pgn file, then returns a
-        prediction if the chosen player (default: white=True) is a computer or not.
-        '''
-        player_df, game_df, move_df = ChessData().import_data(
-            data_path=data_file_path, import_lim=1)
-        X_pad = self.transform_move_data(move_df, training=False)
 
-        if white:
-            X_eval = X_pad[0]
-        else:
-            X_eval = X_pad[1]
-        X_eval = X_eval.reshape(1, X_eval.shape[0], X_eval.shape[1])
 
-        prediction = self.predict(X_eval, path_to_joblib)
-        return prediction
+if __name__ == "__main__":
+    #Instanciate Trainer
+    trainer = Trainer()
+
+    #Retrieve data from file
+    player_df, game_df, move_df = trainer.get_data(
+        source="gcp",
+        import_lim=2000
+        )
+
+    #Transform data into correct shape
+    X, y = trainer.transform_move_data(move_df=move_df,
+                                       max_game_length=100,
+                                       training=True,
+                                       source='gcp')
+
+    #Split Data into train and test set
+    X_train, X_test, y_train, y_test = train_test_split(X, y,
+                                                        test_size=0.2)
+
+    #Train model
+    trainer.train_model(X_train, y_train, verbose=0)
+
+    ##Evaluate model
+    trainer.evaluate_model(X_test, y_test, source='gcp')
