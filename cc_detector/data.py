@@ -216,11 +216,14 @@ class ChessData:
         else:
             if source=="local":
                 scaler = pickle.load(open("models/minmax_scaler.pkl", "rb"))
-                df_wide_full["Halfmove_clock"] = scaler.transform(
-                df_wide_full[["Halfmove_clock"]])
             if source=="gcp":
-                pass
-
+                client = storage.Client().bucket(BUCKET_NAME)
+                blob = client.blob(SCALER_STORAGE_LOCATION)
+                blob.download_to_filename("models/minmax_scaler.pkl")
+                print("Scaler downloaded from Google Cloud Storage")
+                scaler = pickle.load(open("models/minmax_scaler.pkl", "rb"))
+            df_wide_full["Halfmove_clock"] = scaler.transform(
+                df_wide_full[["Halfmove_clock"]])
 
         #Generate Target vector
         if training:

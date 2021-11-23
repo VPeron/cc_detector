@@ -1,3 +1,4 @@
+from typing_extensions import ParamSpecArgs
 import pandas as pd
 import numpy as np
 from pandas.core.frame import DataFrame
@@ -96,11 +97,10 @@ class Trainer():
             return X, y
 
         else:
-            X = ChessData().feature_df_maker(
-                move_df=move_df,
-                max_game_length=max_game_length,
-                training=False
-                )
+            X = ChessData().feature_df_maker(move_df=move_df,
+                                             max_game_length=max_game_length,
+                                             training=False,
+                                             source=source)
             self.max_game_length = max_game_length
 
             print("""Data has been transformed into the correct format. ✅
@@ -190,8 +190,12 @@ class Trainer():
         """
         Takes two numpy arrays (X_test, y_test) and evaluates the model performance.
         """
-        path_to_joblib = self.get_path_to_joblib(source=source)
-        model = self.get_model(path_to_joblib)
+        if source == "local":
+            path_to_joblib = "models/cc_detect_lstm_model.joblib"
+            model = self.load_model(path_to_joblib)
+        if source == "gcp":
+            model = self.load_model_from_gcp()
+
         result = model.evaluate(x=X_test, y=y_test)
 
         self.mlflow_log_metric("test loss", result[0])
@@ -202,6 +206,8 @@ class Trainer():
               +++++++++++++++++++++++++++++++++++++++++++++
               The accuracy of the model is {result[1]}.''')
         return result
+
+### plotting training history
 
     def plot_train_history(self, history):
         '''
@@ -229,63 +235,44 @@ class Trainer():
         ax2.grid(axis="x",linewidth=0.5)
         ax2.grid(axis="y",linewidth=0.5)
 
-    def get_path_to_joblib(self,
-                           source="local"):
-        if source == "local":
-            path = "models/cc_detect_lstm_model.joblib"
-        if source == "gcp":
-            path = ""
-        return path
+
+## Functions that deal with model storing and loading
+
+    def save_model(self, model, path= "models/cc_detect_lstm_model.joblib"):
+        '''
+        Saves the model locally in the form of a joblib file.
+        '''
+        joblib.dump(model, path)
+        print(f"Model.joblib was saved locally under {path}.")
 
     def save_model_to_gcp(self,
                           model):
-        """ Method that saves the model into a .joblib file and uploads it
-        on Google Storage /models folder """
-        joblib.dump(model, 'models/cc_detect_lstm_model.joblib')
+        '''
+        Method that saves the model into a .joblib file and uploads it
+        on Google Storage /models folder
+        '''
+        joblib.dump(model, 'cc_detect_lstm_model.joblib')
         client = storage.Client().bucket(BUCKET_NAME)
         storage_location = MODEL_STORAGE_LOCATION
         blob = client.blob(storage_location)
-        blob.upload_from_filename('models/cc_detect_lstm_model.joblib')
-        print("Uploaded model.joblib to gcp cloud storage")
+        blob.upload_from_filename('cc_detect_lstm_model.joblib')
+        print("Uploaded model.joblib to gcp cloud storage.")
 
-    def get_model(self, path_to_joblib):
+    def load_model(self, path_to_joblib="models/cc_detect_lstm_model.joblib"):
         '''
         Loads a joblib model from the given path and returns the model.
         '''
         model = joblib.load(path_to_joblib)
         return model
 
-    def predict(self, X,
-                source='local'):
-        '''
-        Predicts if the game (X) was played by a computer or a human.
-        Returns a prediction in the form of an array.
-        '''
-        path_to_joblib = self.get_path_to_joblib(source=source)
-        model = self.get_model(path_to_joblib)
-        prediction = model.predict(X)
-        return prediction
+    def load_model_from_gcp(self):
+        client = storage.Client().bucket(BUCKET_NAME)
+        blob = client.blob(MODEL_STORAGE_LOCATION)
+        blob.download_to_filename('cc_detect_lstm_model.joblib')
+        print("Model downloaded from Google Cloud Storage")
+        model = joblib.load('cc_detect_lstm_model.joblib')
+        return model
 
-    def rtp_input(self,
-                  source="local",
-                  data_file_path="raw_data/Fics_data_pc_data.pgn",
-                  white=True):
-        '''
-        Reads and transforms the content of a pgn file, then returns a
-        prediction if the chosen player (default: white=True) is a computer or not.
-        '''
-        player_df, game_df, move_df = ChessData().import_data(
-            data_path=data_file_path, import_lim=1)
-        X_pad = self.transform_move_data(move_df, training=False)
-
-        if white:
-            X_eval = X_pad[0]
-        else:
-            X_eval = X_pad[1]
-        X_eval = X_eval.reshape(1, X_eval.shape[0], X_eval.shape[1])
-
-        prediction = self.predict(X_eval, source=source)
-        return prediction
 
 
 if __name__ == "__main__":
@@ -295,7 +282,7 @@ if __name__ == "__main__":
     #Retrieve data from file
     player_df, game_df, move_df = trainer.get_data(
         source="gcp",
-        import_lim=2000
+        import_lim=3000
         )
 
     #Transform data into correct shape
@@ -312,4 +299,4 @@ if __name__ == "__main__":
     trainer.train_model(X_train, y_train, verbose=0)
 
     ##Evaluate model
-    #trainer.evaluate_model(X_test, y_test, source='local')
+    trainer.evaluate_model(X_test, y_test, source='gcp')

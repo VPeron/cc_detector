@@ -65,7 +65,7 @@ PROJECT_ID = ccdetectorproject
 BUCKET_NAME = cc_detector
 
 # choose your region from https://cloud.google.com/storage/docs/locations#available_locations
-REGION=europe-west3
+REGION=europe-west1
 
 # path to the file to upload to GCP
 LOCAL_PATH='raw_data/Fics_data_pc_data.pgn'
@@ -105,5 +105,7 @@ gcp_submit_training:
 	--module-name ${PACKAGE_NAME}.${FILENAME} \
 	--python-version=${PYTHON_VERSION} \
 	--runtime-version=${RUNTIME_VERSION} \
+	--scale-tier CUSTOM \
+	--master-machine-type n1-standard-16 \
 	--region ${REGION} \
 	--stream-logs
