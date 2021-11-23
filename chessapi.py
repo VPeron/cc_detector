@@ -27,7 +27,7 @@ def index():
 def data():
     chessdata = ChessData()
     player_df, game_df, move_df = chessdata.import_data(source='gcp')
-    players = player_df.to_dict()
+    players = player_df.to_dict()   
     games = game_df.to_dict()
     moves = move_df.to_dict()
     return {
@@ -40,13 +40,13 @@ def data():
 def predict():
     return {'predictions': 'this will eventually work'}
 #     file_df = '?'
-#     #TODO front end reads file, transforms into dict
-#     #TODO get dict into df that model can accept for prediction
-#     X_pred_DataFrame = pd.DataFrame(file_df)
+#     #TODO front end reads file sends stringIO to API
+#     #TODO turns stringIO into pgn object
+#     #TODO transforms into move_df
+#     X_pred_DataFrame = pd.DataFrame(move_df)
 
-    
-#     res = joblib.load('../model.joblib')
-#     prediction = res.predict(X_pred_DataFrame)
+#    rtp_input(source="input", white=True, **kwargs)
+
     
 #     return {'prediction': prediction[0]}
     #TODO return model#s prediction
