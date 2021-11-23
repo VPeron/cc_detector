@@ -79,6 +79,9 @@ class ChessData:
             data_path = kwargs['data_path']
             pgn = open(data_path, encoding='UTF-8')
 
+        if source=="input":
+            pgn = kwargs['pgn']
+
         # read file
         game_counter = 0
         games_parsed = 0
@@ -207,7 +210,7 @@ class ChessData:
             if source=="local":
                 with open("models/minmax_scaler.pkl", "wb") as file:
                     pickle.dump(scaler, file)
-            if source=="gcp":
+            if ((source=="gcp") or (source=="input")):
                 client = storage.Client()
                 bucket = client.bucket(BUCKET_NAME)
                 blob = bucket.blob(SCALER_STORAGE_LOCATION)
@@ -216,7 +219,7 @@ class ChessData:
         else:
             if source=="local":
                 scaler = pickle.load(open("models/minmax_scaler.pkl", "rb"))
-            if source=="gcp":
+            if ((source == "gcp") or (source == "input")):
                 client = storage.Client().bucket(BUCKET_NAME)
                 blob = client.blob(SCALER_STORAGE_LOCATION)
                 blob.download_to_filename("models/minmax_scaler.pkl")

@@ -17,10 +17,13 @@ def predict_comp(X, source='local'):
     prediction = model.predict(X)
     return prediction
 
-def rtp_input(source="local", white=True, **kwargs):
+def rtp_input(source="input", white=True, **kwargs):
     '''
     Reads and transforms the content of a pgn file, then returns a
     prediction if the chosen player (default: white=True) is a computer or not.
+
+    Please pass the pgn object as a kwarg (pgn="...").
+
     '''
     player_df, game_df, move_df = ChessData().import_data(
         source=source, import_lim=1, **kwargs)

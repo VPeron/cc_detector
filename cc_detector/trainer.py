@@ -282,7 +282,7 @@ if __name__ == "__main__":
     #Retrieve data from file
     player_df, game_df, move_df = trainer.get_data(
         source="gcp",
-        import_lim=3000
+        import_lim=2000
         )
 
     #Transform data into correct shape
