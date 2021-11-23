@@ -6,6 +6,7 @@ import chess
 import chess.pgn
 
 from sklearn.preprocessing import MinMaxScaler
+from tensorflow.keras.preprocessing.sequence import pad_sequences
 
 from cc_detector.player import set_player_dict, player_info_extractor
 from cc_detector.ids_generator import players_id_list
@@ -14,9 +15,9 @@ from cc_detector.move import set_move_dict, move_info_extractor,\
     bitmap_representer, castling_right, en_passant_opp, halfmove_clock,\
     binary_board_df#, move_dict_maker
 
-
-from google.cloud import storage    
-from cc_detector.params import BUCKET_TRAIN_DATA_PATH, BUCKET_NAME
+import pickle
+from google.cloud import storage
+from cc_detector.params import BUCKET_TRAIN_DATA_PATH, BUCKET_NAME, SCALER_STORAGE_LOCATION
 import io
 
 
@@ -41,10 +42,14 @@ class ChessData:
         #Set list of all squares on the board
         self.SQUARES = [i for i in range(64)]
 
+        #Define move limit for data padding
+        self.max_game_length = 100
+
     def import_data(
             self,
             source='local',
-            import_lim=50):
+            import_lim=50,
+            **kwargs):
         '''
         Takes the path to a pgn file as an input as well as a number of
         games to be read from the pgn file (Default: import_lim=50).
@@ -56,10 +61,11 @@ class ChessData:
         #blobs = list(bucket.list_blobs(prefix='data/'))
         ## read_output = blobs.download_as_string()
         #print(blobs)
-        
-        if source == 'local':
+
+        if ((source == 'local') & ('data_path' not in kwargs.keys())):
             data_path = 'raw_data/Fics_data_pc_data.pgn'
             pgn = open(data_path, encoding='UTF-8')
+
         if source == 'gcp':
             data_path = f"{BUCKET_TRAIN_DATA_PATH}"
             client = storage.Client()
@@ -69,8 +75,14 @@ class ChessData:
             data = data.decode('utf-8')
             pgn = io.StringIO(data)
 
-        # read file   
+        if 'data_path' in kwargs.keys():
+            data_path = kwargs['data_path']
+            pgn = open(data_path, encoding='UTF-8')
 
+        if source=="input":
+            pgn = kwargs['pgn']
+
+        # read file
         game_counter = 0
         games_parsed = 0
         move_counter = 0
@@ -146,19 +158,23 @@ class ChessData:
         )
 
         df_players_temp = pd.DataFrame(players)
+
         df_games = pd.DataFrame(games)
         df_moves = pd.DataFrame(move_dict)
-
         df_players = players_id_list(df_players_temp)
 
         return df_players, df_games, df_moves
 
 
-    def feature_df_maker(self, move_df, training=True):
+    def feature_df_maker(self,
+                         move_df,
+                         max_game_length=100,
+                         training=True,
+                         source="local"):
         '''
-        Takes a dataframe with moves and transforms them into a list of
-        2D numpy arrays (time series).
-        Returns up to two lists/arrays: X (list) and, if training=True, y (array).
+        Takes a dataframe with moves and transforms them into a padded 3D numpy array
+        (a list of 2D numpy arrays, i.e. time series of the moves within one player's game).
+        Returns up to two arrays: X and, if training=True, y.
         '''
 
         #get binary board representation for each move
@@ -185,19 +201,32 @@ class ChessData:
         else:
             df_wide_full["Computer"] = "NA"
 
-
         # Scale features
         if training:
             scaler = MinMaxScaler()
             scaler.fit(df_wide_full[["Halfmove_clock"]])
             df_wide_full["Halfmove_clock"] = scaler.transform(
                 df_wide_full[["Halfmove_clock"]])
-            with open("models/minmax_scaler.pkl", "wb") as file:
-                pickle.dump(scaler, file)
+            if source=="local":
+                with open("models/minmax_scaler.pkl", "wb") as file:
+                    pickle.dump(scaler, file)
+            if ((source=="gcp") or (source=="input")):
+                client = storage.Client()
+                bucket = client.bucket(BUCKET_NAME)
+                blob = bucket.blob(SCALER_STORAGE_LOCATION)
+                pickle_out = pickle.dumps(scaler)
+                blob.upload_from_string(pickle_out)
         else:
-            scaler = pickle.load(open("models/minmax_scaler.pkl", "rb"))
+            if source=="local":
+                scaler = pickle.load(open("models/minmax_scaler.pkl", "rb"))
+            if ((source == "gcp") or (source == "input")):
+                client = storage.Client().bucket(BUCKET_NAME)
+                blob = client.blob(SCALER_STORAGE_LOCATION)
+                blob.download_to_filename("models/minmax_scaler.pkl")
+                print("Scaler downloaded from Google Cloud Storage")
+                scaler = pickle.load(open("models/minmax_scaler.pkl", "rb"))
             df_wide_full["Halfmove_clock"] = scaler.transform(
-            df_wide_full[["Halfmove_clock"]])
+                df_wide_full[["Halfmove_clock"]])
 
         #Generate Target vector
         if training:
@@ -222,12 +251,38 @@ class ChessData:
                 columns=["turn", "WhiteIsComp", "Game_ID", "Computer"])
             games_list.append(np.array(df_b_temp))
 
-        X = games_list
+        # padding arrays
+        X_pad = pad_sequences(
+            games_list,
+            dtype='float32',
+            padding='post',
+            value=-999,
+        )
+
+        if X_pad.shape[1] < max_game_length:
+            array_list = []
+            for game in X_pad:
+                game = np.pad(game,
+                              ((0, (max_game_length - game.shape[0])), (0, 0)),
+                              "constant",
+                              constant_values=(-999., ))
+                array_list.append(game)
+            X_new = np.stack(array_list, axis=0)
+
+        if X_pad.shape[1] > max_game_length:
+            array_list = []
+            for game in X_pad:
+                game = game[0:max_game_length, :]
+                array_list.append(game)
+            X_new = np.stack(array_list, axis=0)
+
+        self.max_game_length = max_game_length
 
         if training:
-            return X, y
+            return X_new, y
         else:
-            return X
+            return X_new
+
 
 
 if __name__ == "__main__":
