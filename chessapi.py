@@ -27,7 +27,7 @@ def index():
 def data():
     chessdata = ChessData()
     player_df, game_df, move_df = chessdata.import_data(source='gcp')
-    players = player_df.to_dict()
+    players = player_df.to_dict()   
     games = game_df.to_dict()
     moves = move_df.to_dict()
     return {
@@ -45,7 +45,7 @@ def predict():
 #     X_pred_DataFrame = pd.DataFrame(file_df)
 
     
-#     res = joblib.load('../model.joblib')
+#     res = joblib.load('../model.joblib')  # in gcp '/models/model.joblib'
 #     prediction = res.predict(X_pred_DataFrame)
     
 #     return {'prediction': prediction[0]}
