@@ -8,10 +8,5 @@ raw_data/
 .env
 .pgn
 .vscode/
-<<<<<<< HEAD
-*.json
-=======
 *:Zone.Identifier
 *.json
-
->>>>>>> master

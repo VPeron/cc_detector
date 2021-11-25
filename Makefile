@@ -109,3 +109,30 @@ gcp_submit_training:
 	--master-machine-type n1-standard-16 \
 	--region ${REGION} \
 	--stream-logs
+
+# ----------------------------------
+#          DOCKER SET UP
+# ----------------------------------
+DOCKER_IMAGE_NAME = 'chess-api-image'
+
+# run locally
+run_image:
+	docker run -e GOOGLE_APPLICATION_CREDENTIALS=/credentials.json -p 8080:8000 chess-api-image
+
+build_image:
+	docker build -t eu.gcr.io/$PROJECT_ID/$DOCKER_IMAGE_NAME .
+push_image:
+	docker push eu.gcr.io/$PROJECT_ID/$DOCKER_IMAGE_NAME
+deploy_image:
+	gcloud run deploy \
+		--image eu.gcr.io/$PROJECT_ID/$DOCKER_IMAGE_NAME \
+		--platform managed \
+		--region europe-west1 \
+		--set-env-vars "GOOGLE_APPLICATION_CREDENTIALS=/credentials.json"
+
+#TODO set env variables
+
+##### Prediction API - - - - - - - - - - - - - - - - - - - - - - - - -
+# load web server with code autoreload
+run_api:
+	uvicorn chessapi:app --reload
