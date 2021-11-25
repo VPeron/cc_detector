@@ -17,7 +17,7 @@ def predict_comp(X, source='local'):
     prediction = model.predict(X)
     return prediction
 
-def rtp_input(source="input", white=True, **kwargs):
+def rtp_input(move_df, source="input", white=True, **kwargs):
     '''
     Reads and transforms the content of a pgn file, then returns a
     prediction if the chosen player (default: white=True) is a computer or not.
@@ -25,9 +25,9 @@ def rtp_input(source="input", white=True, **kwargs):
     Please pass the pgn object as a kwarg (pgn="...").
 
     '''
-    player_df, game_df, move_df = ChessData().data_df_maker(source=source,
-                                                            import_lim=1,
-                                                            **kwargs)
+    # player_df, game_df, move_df = ChessData().data_df_maker(source=source,
+    #                                                         import_lim=1,
+    #                                                         **kwargs)
     X_pad = Trainer().transform_move_data(move_df, training=False)
 
     if white:

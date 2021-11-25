@@ -161,18 +161,26 @@ class ChessData:
     def data_df_maker(self,
                       source="local",
                       import_lim=50,
+                      api=False,
                       **kwargs):
-        players, games, move_dict = self.import_data(source=source,
-                                                     import_lim=import_lim,
-                                                     **kwargs)
+        if api==False:
+            players, games, move_dict = self.import_data(source=source,
+                                                        import_lim=import_lim,
+                                                        **kwargs)
+            df_players_temp = pd.DataFrame(players)
 
-        df_players_temp = pd.DataFrame(players)
+            df_games = pd.DataFrame(games)
+            df_players = players_id_list(df_players_temp)
+            df_moves = pd.DataFrame(move_dict)
 
-        df_games = pd.DataFrame(games)
-        df_moves = pd.DataFrame(move_dict)
-        df_players = players_id_list(df_players_temp)
+        if api==True:
+            move_dict = kwargs["input_dict"]
+            df_moves = pd.DataFrame(move_dict)
 
-        return df_players, df_games, df_moves
+        if api==False:
+            return df_players, df_games, df_moves
+        if api==True:
+            return df_moves
 
 
     def feature_df_maker(self,
