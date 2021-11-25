@@ -1,4 +1,3 @@
-from os import read
 import pandas as pd
 import numpy as np
 
@@ -13,7 +12,7 @@ from cc_detector.ids_generator import players_id_list
 from cc_detector.game import set_game_dict, game_info_extractor
 from cc_detector.move import set_move_dict, move_info_extractor,\
     bitmap_representer, castling_right, en_passant_opp, halfmove_clock,\
-    binary_board_df#, move_dict_maker
+    binary_board_df
 
 import pickle
 from google.cloud import storage
@@ -45,23 +44,9 @@ class ChessData:
         #Define move limit for data padding
         self.max_game_length = 100
 
-    def import_data(
-            self,
-            source='local',
-            import_lim=50,
-            **kwargs):
-        '''
-        Takes the path to a pgn file as an input as well as a number of
-        games to be read from the pgn file (Default: import_lim=50).
-        Returns three Pandas dataframes (df_players, df_games, df_moves).
-        '''
-
-        #client = storage.Client()
-        #bucket = client.bucket(BUCKET_NAME)
-        #blobs = list(bucket.list_blobs(prefix='data/'))
-        ## read_output = blobs.download_as_string()
-        #print(blobs)
-
+    def read_data(self,
+                  source='local',
+                  **kwargs):
         if ((source == 'local') & ('data_path' not in kwargs.keys())):
             data_path = 'raw_data/Fics_data_pc_data.pgn'
             pgn = open(data_path, encoding='UTF-8')
@@ -81,6 +66,21 @@ class ChessData:
 
         if source=="input":
             pgn = kwargs['pgn']
+
+        return pgn
+
+    def import_data(
+            self,
+            source='local',
+            import_lim=50,
+            **kwargs):
+        '''
+        Takes the path to a pgn file as an input as well as a number of
+        games to be read from the pgn file (Default: import_lim=50).
+        Returns three Pandas dataframes (df_players, df_games, df_moves).
+        '''
+
+        pgn = self.read_data(source, **kwargs)
 
         # read file
         game_counter = 0
@@ -156,6 +156,15 @@ class ChessData:
         print(
             f'{games_parsed} games with a total number of {move_counter} moves parsed.'
         )
+        return players, games, move_dict
+
+    def data_df_maker(self,
+                      source="local",
+                      import_lim=50,
+                      **kwargs):
+        players, games, move_dict = self.import_data(source=source,
+                                                     import_lim=import_lim,
+                                                     **kwargs)
 
         df_players_temp = pd.DataFrame(players)
 
@@ -287,7 +296,7 @@ class ChessData:
 
 if __name__ == "__main__":
     #Print heads of imported dfs
-    player_df, game_df, move_df = ChessData().import_data()
+    player_df, game_df, move_df = ChessData().data_df_maker()
 
     print(player_df.head())
     print(game_df.head())

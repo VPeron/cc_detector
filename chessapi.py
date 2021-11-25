@@ -26,7 +26,7 @@ def index():
 @app.get("/data")
 def data():
     chessdata = ChessData()
-    player_df, game_df, move_df = chessdata.import_data(source='gcp')
+    player_df, game_df, move_df = chessdata.data_df_maker(source='gcp')
     players = player_df.to_dict()
     games = game_df.to_dict()
     moves = move_df.to_dict()
@@ -35,7 +35,7 @@ def data():
         'games':games,
         'moves':moves
     }
-    
+
 @app.get("/predict")
 def predict():
     return {'predictions': 'this will eventually work'}
@@ -44,11 +44,11 @@ def predict():
 #     #TODO get dict into df that model can accept for prediction
 #     X_pred_DataFrame = pd.DataFrame(file_df)
 
-    
+
 #     res = joblib.load('../model.joblib')
 #     prediction = res.predict(X_pred_DataFrame)
-    
+
 #     return {'prediction': prediction[0]}
-    #TODO return model#s prediction
-    # collect prediction from GCP model -> needs training process pipelined?
-    # https://kitt.lewagon.com/camps/673/lectures/content/07-Data-Engineering_02.html
+#TODO return model#s prediction
+# collect prediction from GCP model -> needs training process pipelined?
+# https://kitt.lewagon.com/camps/673/lectures/content/07-Data-Engineering_02.html

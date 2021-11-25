@@ -25,8 +25,9 @@ def rtp_input(source="input", white=True, **kwargs):
     Please pass the pgn object as a kwarg (pgn="...").
 
     '''
-    player_df, game_df, move_df = ChessData().import_data(
-        source=source, import_lim=1, **kwargs)
+    player_df, game_df, move_df = ChessData().data_df_maker(source=source,
+                                                            import_lim=1,
+                                                            **kwargs)
     X_pad = Trainer().transform_move_data(move_df, training=False)
 
     if white:

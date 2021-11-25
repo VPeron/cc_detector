@@ -10,7 +10,7 @@ dummy_players_id_df = pd.DataFrame({'White' : ["12345", 'DummyName', "1234", "fo
 
 def test_players_id_list():
     '''checks if the length of df equals the number of unique IDs '''
-    df_players, df_games, df_moves = ChessData().import_data()
+    df_players, df_games, df_moves = ChessData().data_df_maker()
     players_id = set_players_id_df()
     assert df_players.shape[0] == len(df_players["Player_ID"].unique())
     assert players_id.isnull().values.any() == 0

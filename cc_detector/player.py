@@ -1,9 +1,5 @@
 import pandas as pd
-import numpy as np
-
-
-from cc_detector.ids_generator import id_generator, finding_comp
-
+#from cc_detector.ids_generator import id_generator, finding_comp
 
 def set_player_dict():
     player_dict = {

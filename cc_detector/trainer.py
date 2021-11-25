@@ -65,9 +65,8 @@ class Trainer():
         Takes a path to a pgn file (data_path) and a max. number of games read
         (default: import_lim=1000), returns three dataframes (player_df, game_df, move_df).
         '''
-        player_df, game_df, move_df = ChessData().import_data(source=source,
-                                                              import_lim=import_lim,
-                                                              **kwargs)
+        player_df, game_df, move_df = ChessData().data_df_maker(
+            source=source, import_lim=import_lim, **kwargs)
 
         return player_df, game_df, move_df
 
@@ -172,9 +171,10 @@ class Trainer():
 
         self.model = model
         self.mlflow_log_param("model", "Sequential: LSTM (2 LSTM layers, 2 Dense layers)")
-        self.mlflow_log_param("l1 regularizer rate", l1_reg_rate)
-        self.mlflow_log_param("recurrent dropout", recurrent_dropout)
-        self.mlflow_log_param("dense dropout", dense_dropout)
+        self.mlflow_log_param("training_epochs", max(history.epoch)+1)
+        self.mlflow_log_param("l1_regularizer_rate", l1_reg_rate)
+        self.mlflow_log_param("recurrent_dropout", recurrent_dropout)
+        self.mlflow_log_param("dense_dropout", dense_dropout)
         self.mlflow_log_param("lstm_start_units", lstm_start_units)
         self.mlflow_log_param("dense_start_units", dense_start_units)
         self.mlflow_log_param("train_data_size", X_train.shape[0])
