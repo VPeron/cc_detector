@@ -41,86 +41,6 @@ def data():
         'moves':moves
     }
 
-class Squares(BaseModel):
-    s0: int
-    s1: int
-    s2: int
-    s3: int
-    s4: int
-    s5: int
-    s6: int
-    s7: int
-    s8: int
-    s9: int
-    s10: int
-    s11: int
-    s12: int
-    s13: int
-    s14: int
-    s15: int
-    s16: int
-    s17: int
-    s18: int
-    s19: int
-    s20: int
-    s21: int
-    s22: int
-    s23: int
-    s24: int
-    s25: int
-    s26: int
-    s27: int
-    s28: int
-    s29: int
-    s30: int
-    s31: int
-    s32: int
-    s33: int
-    s34: int
-    s35: int
-    s36: int
-    s37: int
-    s38: int
-    s39: int
-    s40: int
-    s41: int
-    s42: int
-    s43: int
-    s44: int
-    s45: int
-    s46: int
-    s47: int
-    s48: int
-    s49: int
-    s50: int
-    s51: int
-    s52: int
-    s53: int
-    s54: int
-    s55: int
-    s56: int
-    s57: int
-    s58: int
-    s59: int
-    s60: int
-    s61: int
-    s62: int
-    s63: int
-
-class Pieces(BaseModel):
-    K: Json[Squares]
-    Q: Json[Squares]
-    R: Json[Squares]
-    B: Json[Squares]
-    N: Json[Squares]
-    P: Json[Squares]
-    k: Json[Squares]
-    q: Json[Squares]
-    r: Json[Squares]
-    b: Json[Squares]
-    n: Json[Squares]
-    p: Json[Squares]
-
 
 @app.get("/predict")
 def predict(Bitmap_moves: list = Query([]),
@@ -153,7 +73,6 @@ def predict(Bitmap_moves: list = Query([]),
         "Pseudo_EP_option": Pseudo_EP_option,
         "Halfmove_clock": Halfmove_clock
     }
-
 
     # move_df = pd.DataFrame(
     #     dict(Game_ID=[Game_ID],

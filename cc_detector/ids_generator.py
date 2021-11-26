@@ -22,27 +22,27 @@ def set_players_id_df():
 def players_id_list(input_df):
     '''generates list with unique player names, IDs and Yes/No computer to merge with df_players'''
     players_id = set_players_id_df()
-    black = list(input_df["Black"]) 
+    black = list(input_df["Black"])
     white = list(input_df["White"])
-    
+
     #merge uniqe values from both columns:
     bw_merged = pd.DataFrame(list(set(black + white)), columns=["Players"])
-    
+
     # Player_ID filled with NaNs:
     players_id = players_id.merge(bw_merged, how="outer", left_on=["Players"], right_on=["Players"])
-    
+
     # NaNs replaced with generated IDs
     nans_to_ids = players_id["Player_ID"].fillna(players_id["Player_ID"].apply(id_generator))
-    
+
     #inserting missing IDs to players_id
     players_id["Player_ID"] = nans_to_ids
-    
+
     computer = finding_comp(input_df)
     players_id = players_id.merge(computer, left_on='Players', right_on='Computer', how='outer')
     players_id = players_id.replace(np.nan, 'No')
     players_id.drop(columns='Computer', inplace=True)
     players_id.rename(columns={'Yes' : 'Computer'}, inplace=True)
-    
+
     return players_id
 
 def finding_comp(df_players):
@@ -56,33 +56,33 @@ def finding_comp(df_players):
     comp2 = df_players.loc[df_players['WhiteIsComp'] == "No"]
     comp2 = comp2[['Black']].copy()
     comp2.drop_duplicates(inplace=True)
-    
+
     # merge and get the unique names
     c1 = list(comp1['White'])
     c2 = list(comp2['Black'])
     computer = list(set(c1 + c2))
-    
+
     computer = pd.DataFrame({'Computer' : computer})
     computer['Yes'] = 'Yes'
-    
+
     # returns a df with computer names
     return computer
 
 # def players_id_df(input_df, players_id):
 #     '''generates list with unique player names and IDs to merge with df_players'''
 #     #extract black and white columns
-#     black = list(input_df["Black"]) 
+#     black = list(input_df["Black"])
 #     white = list(input_df["White"])
-    
+
 #     #merge uniqe values from both columns:
 #     bw_merged = pd.DataFrame(list(set(black + white)), columns=["Players"])
-    
+
 #     # Player_ID column filled with NaNs:
 #     players_id = players_id.merge(bw_merged, how="outer", left_on=["Players"], right_on=["Players"])
-    
+
 #     # NaNs replaced with generated IDs
 #     nans_to_ids = players_id["Player_ID"].fillna(players_id["Player_ID"].apply(id_generator))
-    
+
 #     #inserting missing IDs to players_id
 #     players_id["Player_ID"] = nans_to_ids
 
@@ -118,13 +118,13 @@ def game_id(df_games):
     '''generates ids for games'''
     df_games["old_ID"] = df_games["Game_ID"]
     df_games['Game_ID'] = df_games['Game_ID'].apply(short_id_gen)
-    
+
     # adding players ids
     # df_games = df_games.merge(players_id, left_on='White', right_on='Players')
     # df_games = df_games.merge(players_id, left_on='Black', right_on='Players')
     # df_games.drop(columns=['Players_x', 'Players_y'], inplace=True) #optionally drop White, Black columns
     # df_games.rename(columns = {'Game_ID_y' : 'Game_ID', 'Player_ID_x': 'White_ID', 'Player_ID_y': 'Black_ID'}, inplace=True)
-    
+
     return df_games
 
 def move_id(df_moves, df_games):

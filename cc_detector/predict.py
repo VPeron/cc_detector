@@ -12,7 +12,7 @@ def predict_comp(X, source='local'):
     if source == "local":
         path_to_joblib = "models/cc_detect_lstm_model.joblib"
         model = Trainer().load_model(path_to_joblib)
-    if source == "gcp":
+    if ((source == "gcp") or (source == "input")):
         model = Trainer().load_model_from_gcp()
     prediction = model.predict(X)
     return prediction

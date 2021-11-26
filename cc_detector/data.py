@@ -172,16 +172,12 @@ class ChessData:
             df_games = pd.DataFrame(games)
             df_players = players_id_list(df_players_temp)
             df_moves = pd.DataFrame(move_dict)
+            return df_players, df_games, df_moves
 
         if api==True:
             move_dict = kwargs["input_dict"]
             df_moves = pd.DataFrame(move_dict)
-
-        if api==False:
-            return df_players, df_games, df_moves
-        if api==True:
             return df_moves
-
 
     def feature_df_maker(self,
                          move_df,
