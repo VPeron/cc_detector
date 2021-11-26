@@ -74,7 +74,8 @@ class Trainer():
                             move_df,
                             max_game_length=100,
                             training=True,
-                            source="local"):
+                            source="local",
+                            api=False):
         """
         Takes the move dataframe (move_df) and returns a padded 3D numpy array
         (padding with value -999). The maximum number of moves for the padding
@@ -86,7 +87,8 @@ class Trainer():
                 move_df=move_df,
                 max_game_length=max_game_length,
                 training=True,
-                source=source
+                source=source,
+                api=api
                 )
             self.max_game_length = max_game_length
 
@@ -99,7 +101,8 @@ class Trainer():
             X = ChessData().feature_df_maker(move_df=move_df,
                                              max_game_length=max_game_length,
                                              training=False,
-                                             source=source)
+                                             source=source,
+                                             api=api)
             self.max_game_length = max_game_length
 
             print("""Data has been transformed into the correct format. ✅

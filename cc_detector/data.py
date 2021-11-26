@@ -187,15 +187,20 @@ class ChessData:
                          move_df,
                          max_game_length=100,
                          training=True,
+                         api=False,
                          source="local"):
         '''
         Takes a dataframe with moves and transforms them into a padded 3D numpy array
         (a list of 2D numpy arrays, i.e. time series of the moves within one player's game).
         Returns up to two arrays: X and, if training=True, y.
         '''
-
-        #get binary board representation for each move
-        df_wide = binary_board_df(move_df)
+        if api==True:
+            df_wide = pd.DataFrame(move_df["Bitmap_moves"].tolist(),
+                                   columns = [i for i in range(768)])
+        if api==False:
+            #get binary board representation for each move
+            df_wide = binary_board_df(move_df)
+            print(df_wide.head())
 
         #get non-board-representation features from move_df
         game_infos = move_df[[
@@ -228,20 +233,25 @@ class ChessData:
                 with open("models/minmax_scaler.pkl", "wb") as file:
                     pickle.dump(scaler, file)
             if ((source=="gcp") or (source=="input")):
-                client = storage.Client()
-                bucket = client.bucket(BUCKET_NAME)
-                blob = bucket.blob(SCALER_STORAGE_LOCATION)
-                pickle_out = pickle.dumps(scaler)
-                blob.upload_from_string(pickle_out)
+                # client = storage.Client()
+                # bucket = client.bucket(BUCKET_NAME)
+                # blob = bucket.blob(SCALER_STORAGE_LOCATION)
+                # pickle_out = pickle.dumps(scaler)
+                # blob.upload_from_string(pickle_out)
+                with open("minmax_scaler.pkl", "wb") as file:
+                    pickle.dump(scaler, file)
+                client = storage.Client().bucket(BUCKET_NAME)
+                blob = client.blob(SCALER_STORAGE_LOCATION)
+                blob.upload_from_filename('minmax_scaler.pkl')
         else:
             if source=="local":
                 scaler = pickle.load(open("models/minmax_scaler.pkl", "rb"))
             if ((source == "gcp") or (source == "input")):
                 client = storage.Client().bucket(BUCKET_NAME)
                 blob = client.blob(SCALER_STORAGE_LOCATION)
-                blob.download_to_filename("models/minmax_scaler.pkl")
+                blob.download_to_filename("minmax_scaler.pkl")
                 print("Scaler downloaded from Google Cloud Storage")
-                scaler = pickle.load(open("models/minmax_scaler.pkl", "rb"))
+                scaler = pickle.load(open("minmax_scaler.pkl", "rb"))
             df_wide_full["Halfmove_clock"] = scaler.transform(
                 df_wide_full[["Halfmove_clock"]])
 
@@ -280,9 +290,9 @@ class ChessData:
             array_list = []
             for game in X_pad:
                 game = np.pad(game,
-                              ((0, (max_game_length - game.shape[0])), (0, 0)),
-                              "constant",
-                              constant_values=(-999., ))
+                            ((0, (max_game_length - game.shape[0])), (0, 0)),
+                            "constant",
+                            constant_values=(-999., ))
                 array_list.append(game)
             X_new = np.stack(array_list, axis=0)
 

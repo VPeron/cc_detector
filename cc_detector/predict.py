@@ -17,7 +17,7 @@ def predict_comp(X, source='local'):
     prediction = model.predict(X)
     return prediction
 
-def rtp_input(move_df, source="input", white=True, **kwargs):
+def rtp_input(move_df, source="local", white=True, api=True, **kwargs):
     '''
     Reads and transforms the content of a pgn file, then returns a
     prediction if the chosen player (default: white=True) is a computer or not.
@@ -28,7 +28,10 @@ def rtp_input(move_df, source="input", white=True, **kwargs):
     # player_df, game_df, move_df = ChessData().data_df_maker(source=source,
     #                                                         import_lim=1,
     #                                                         **kwargs)
-    X_pad = Trainer().transform_move_data(move_df, training=False)
+    X_pad = Trainer().transform_move_data(move_df,
+                                          training=False,
+                                          source="local",
+                                          api=api)
 
     if white:
         X_eval = X_pad[0]
@@ -37,4 +40,4 @@ def rtp_input(move_df, source="input", white=True, **kwargs):
     X_eval = X_eval.reshape(1, X_eval.shape[0], X_eval.shape[1])
 
     prediction = predict_comp(X=X_eval, source=source)
-    return prediction
+    return prediction[0][0]
