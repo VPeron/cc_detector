@@ -59,10 +59,10 @@ pypi:
 # ----------------------------------
 
 # project id - replace with your GCP project id
-PROJECT_ID = ccdetectorproject
+PROJECT_ID=ccdetectorproject
 
 # bucket name - replace with your GCP bucket name
-BUCKET_NAME = cc_detector
+BUCKET_NAME=cc_detector
 
 # choose your region from https://cloud.google.com/storage/docs/locations#available_locations
 REGION=europe-west1
@@ -85,6 +85,8 @@ PACKAGE_NAME=cc_detector
 FILENAME=trainer
 
 JOB_NAME=cc_detector_training_$(shell date +'%Y%m%d_%H%M%S')
+
+DOCKER_IMAGE_NAME=chessapiimage
 
 set_project:
 	@gcloud config set project ${PROJECT_ID}
@@ -113,12 +115,13 @@ gcp_submit_training:
 # ----------------------------------
 #          DOCKER SET UP
 # ----------------------------------
-DOCKER_IMAGE_NAME = 'chess-api-image'
+## https://vsupalov.com/docker-arg-env-variable-guide/
 
 # run locally
 run_image:
-	docker run -e GOOGLE_APPLICATION_CREDENTIALS=/credentials.json -p 8080:8000 chess-api-image
+	docker run -e GOOGLE_APPLICATION_CREDENTIALS=/ccdetectorproject-e3fc70984fb0.json -p 8080:8000 eu.gcr.io/ccdetectorproject/chessapiimage:latest
 
+# build, push and deploy
 build_image:
 	docker build -t eu.gcr.io/$PROJECT_ID/$DOCKER_IMAGE_NAME .
 push_image:
@@ -128,9 +131,8 @@ deploy_image:
 		--image eu.gcr.io/$PROJECT_ID/$DOCKER_IMAGE_NAME \
 		--platform managed \
 		--region europe-west1 \
-		--set-env-vars "GOOGLE_APPLICATION_CREDENTIALS=/credentials.json"
+		--set-env-vars "GOOGLE_APPLICATION_CREDENTIALS=/ccdetectorproject-e3fc70984fb0.json"
 
-#TODO set env variables
 
 ##### Prediction API - - - - - - - - - - - - - - - - - - - - - - - - -
 # load web server with code autoreload
