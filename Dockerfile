@@ -10,7 +10,7 @@ COPY cc_detector/ cc_detector/
 COPY chessapi.py /chessapi.py
 
 # credentials
-RUN echo ${{secrets.GCPCREDS}} > ccdetectorproject-e3fc70984fb0.json
+# RUN echo $JSON_CREDENDTIALS > credentials.json
 
 COPY requirements.txt /requirements.txt
 
