@@ -10,11 +10,11 @@ COPY cc_detector/ cc_detector/
 COPY chessapi.py /chessapi.py
 
 # credentials
-COPY ccdetectorproject-e3fc70984fb0.json /credentials.json
+RUN sh scripts/gcpsecret.sh
 
 COPY requirements.txt /requirements.txt
 
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-CMD uvicorn chessapi:app --host 0.0.0.0
+CMD uvicorn chessapi:app --host 0.0.0.0 --port $PORT
