@@ -4,8 +4,10 @@ import numpy as np
 import chess
 import chess.pgn
 
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from tensorflow.keras.preprocessing.sequence import pad_sequences
+from sklearn.pipeline import make_pipeline
+from sklearn.compose import make_column_transformer
 
 from cc_detector.player import set_player_dict, player_info_extractor
 from cc_detector.ids_generator import players_id_list
@@ -15,6 +17,7 @@ from cc_detector.move import set_move_dict, move_info_extractor,\
     binary_board_df
 
 import pickle
+#import joblib
 from google.cloud import storage
 from cc_detector.params import BUCKET_TRAIN_DATA_PATH, BUCKET_NAME, SCALER_STORAGE_LOCATION
 import io
@@ -97,6 +100,8 @@ class ChessData:
                 game = chess.pgn.read_game(pgn)
                 board = game.board()
                 moves = list(game.mainline_moves())
+                variations = game.mainline()
+                eval_log = {'evals': []}
 
                 if len(moves) > 5:
                     # Player info parsing
@@ -105,7 +110,15 @@ class ChessData:
 
                     # Game info parsing
                     games = game_info_extractor(game=game,
-                                                game_dict=game_dict)
+                                                game_dict=game_dict,
+                                                game_counter=game_counter)
+
+                    #cycle through evals
+                    for variation in variations:
+                        eval = variation.comment
+                        eval = eval.split('[%eval ')[1].split(']')[0]
+                        eval_log['evals'].append(float(eval))
+                    move_dict["Evaluation"].append(eval_log["evals"])
 
                     # Moves info parsing
                     white = True
@@ -152,6 +165,8 @@ class ChessData:
                 print('No further games to load.')
                 break
 
+        move_dict["Evaluation"] = self.flatten_list(move_dict["Evaluation"])
+
         print(f'{game_counter} games read.')
         print(
             f'{games_parsed} games with a total number of {move_counter} moves parsed.'
@@ -196,12 +211,11 @@ class ChessData:
         if api==False:
             #get binary board representation for each move
             df_wide = binary_board_df(move_df)
-            print(df_wide.head())
 
         #get non-board-representation features from move_df
         game_infos = move_df[[
             "Game_ID", "turn", "WhiteIsComp", "Castling_right", "EP_option",
-            "Halfmove_clock"
+            "Halfmove_clock", "Evaluation"
         ]]
 
         # concatenate board representations with other features
@@ -221,35 +235,70 @@ class ChessData:
 
         # Scale features
         if training:
-            scaler = MinMaxScaler()
-            scaler.fit(df_wide_full[["Halfmove_clock"]])
-            df_wide_full["Halfmove_clock"] = scaler.transform(
-                df_wide_full[["Halfmove_clock"]])
+
+            minmax_scaler = MinMaxScaler()
+            std_scaler = StandardScaler()
+
+            preproc_basic = make_column_transformer(
+                (minmax_scaler, ["Halfmove_clock"]),
+                (std_scaler, ["Evaluation"]),
+                remainder='passthrough')
+
+            preproc_basic.fit(df_wide_full)
+            df_wide_full = preproc_basic.transform(df_wide_full)
+
+
             if source=="local":
-                with open("models/minmax_scaler.pkl", "wb") as file:
-                    pickle.dump(scaler, file)
+                with open("models/scaler.pkl", "wb") as file:
+                    pickle.dump(preproc_basic, file)
             if ((source=="gcp") or (source=="input")):
-                # client = storage.Client()
-                # bucket = client.bucket(BUCKET_NAME)
-                # blob = bucket.blob(SCALER_STORAGE_LOCATION)
-                # pickle_out = pickle.dumps(scaler)
-                # blob.upload_from_string(pickle_out)
-                with open("minmax_scaler.pkl", "wb") as file:
-                    pickle.dump(scaler, file)
+                with open("scaler.pkl", "wb") as file:
+                    pickle.dump(preproc_basic, file)
                 client = storage.Client().bucket(BUCKET_NAME)
                 blob = client.blob(SCALER_STORAGE_LOCATION)
-                blob.upload_from_filename('minmax_scaler.pkl')
+                blob.upload_from_filename('scaler.pkl')
         else:
             if source=="local":
-                scaler = pickle.load(open("models/minmax_scaler.pkl", "rb"))
+                preproc_basic = pickle.load(open("models/scaler.pkl", "rb"))
             if ((source == "gcp") or (source == "input")):
                 client = storage.Client().bucket(BUCKET_NAME)
                 blob = client.blob(SCALER_STORAGE_LOCATION)
-                blob.download_to_filename("minmax_scaler.pkl")
+                blob.download_to_filename("scaler.pkl")
                 print("Scaler downloaded from Google Cloud Storage")
-                scaler = pickle.load(open("minmax_scaler.pkl", "rb"))
-            df_wide_full["Halfmove_clock"] = scaler.transform(
-                df_wide_full[["Halfmove_clock"]])
+                preproc_basic = pickle.load(open("scaler.pkl", "rb"))
+            df_wide_full = preproc_basic.transform(df_wide_full)
+
+        print(pd.DataFrame(df_wide_full))
+
+        #     scaler = MinMaxScaler()
+        #     scaler.fit(df_wide_full[["Halfmove_clock"]])
+        #     df_wide_full["Halfmove_clock"] = scaler.transform(
+        #         df_wide_full[["Halfmove_clock"]])
+        #     if source=="local":
+        #         with open("models/minmax_scaler.pkl", "wb") as file:
+        #             pickle.dump(scaler, file)
+        #     if ((source=="gcp") or (source=="input")):
+        #         # client = storage.Client()
+        #         # bucket = client.bucket(BUCKET_NAME)
+        #         # blob = bucket.blob(SCALER_STORAGE_LOCATION)
+        #         # pickle_out = pickle.dumps(scaler)
+        #         # blob.upload_from_string(pickle_out)
+        #         with open("minmax_scaler.pkl", "wb") as file:
+        #             pickle.dump(scaler, file)
+        #         client = storage.Client().bucket(BUCKET_NAME)
+        #         blob = client.blob(SCALER_STORAGE_LOCATION)
+        #         blob.upload_from_filename('minmax_scaler.pkl')
+        # else:
+        #     if source=="local":
+        #         scaler = pickle.load(open("models/minmax_scaler.pkl", "rb"))
+        #     if ((source == "gcp") or (source == "input")):
+        #         client = storage.Client().bucket(BUCKET_NAME)
+        #         blob = client.blob(SCALER_STORAGE_LOCATION)
+        #         blob.download_to_filename("minmax_scaler.pkl")
+        #         print("Scaler downloaded from Google Cloud Storage")
+        #         scaler = pickle.load(open("minmax_scaler.pkl", "rb"))
+        #     df_wide_full["Halfmove_clock"] = scaler.transform(
+        #         df_wide_full[["Halfmove_clock"]])
 
         #Generate Target vector
         if training:
@@ -270,6 +319,7 @@ class ChessData:
             df_w_temp = df_white[df_white["Game_ID"] == game_id].drop(
                 columns=["turn", "WhiteIsComp", "Game_ID", "Computer"])
             games_list.append(np.array(df_w_temp))
+
             df_b_temp = df_black[df_black["Game_ID"] == game_id].drop(
                 columns=["turn", "WhiteIsComp", "Game_ID", "Computer"])
             games_list.append(np.array(df_b_temp))
@@ -306,7 +356,17 @@ class ChessData:
         else:
             return X_new
 
-
+    def flatten_list(self, _2d_list):
+        flat_list = []
+        # Iterate through the outer list
+        for element in _2d_list:
+            if type(element) is list:
+                # If the element is of type list, iterate through the sublist
+                for item in element:
+                    flat_list.append(item)
+            else:
+                flat_list.append(element)
+        return flat_list
 
 if __name__ == "__main__":
     #Print heads of imported dfs
