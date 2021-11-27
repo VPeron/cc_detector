@@ -21,6 +21,7 @@ on:
     branches: [ master ]
 
 jobs:
+  
   # 🤖 CI paragraph
   #
   # uncomment the content of this paragraph to activate the tests in GitHub CI
@@ -29,6 +30,14 @@ jobs:
   #   (the `strategy` key should be at the same level as the `steps` key)
 
   build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Say hello
+      run: |
+        echo "Hello, World!"
+
     # - name: Set environment variables
     # env:
     #   JSON_CREDENTIALS: $${{ secrets.SECRET_NAME }}
