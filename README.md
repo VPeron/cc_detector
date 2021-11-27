@@ -1,10 +1,10 @@
 # Data analysis
 - Document here the project: cc_detector
-- Description: Project Description
-- Data Source:
-- Type of analysis:
+- Description: The intrinsic idea behind this project is to build a model that can detect whether a chess engine is being used to play an online chess game between two human players.
+- Data Source: https://www.ficsgames.org/
+- Type of analysis: 
 
-Please document the project the better you can.
+The base model and initial approach takes on a supervised form and learns from a dataset comprised of around 50.000 games where every game is played by a human vs a computer.
 
 # Startup the project
 

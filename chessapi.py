@@ -1,10 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from cc_detector.data import ChessData
-import pandas as pd
-import joblib
-from google.cloud import storage
-
+from cc_detector.predict import rtp_input
+# from google.cloud import storage
+import chess.pgn
 
 app = FastAPI()
 
@@ -35,20 +34,11 @@ def data():
         'games':games,
         'moves':moves
     }
+
     
 @app.get("/predict")
-def predict():
-    return {'predictions': 'this will eventually work'}
-#     file_df = '?'
-#     #TODO front end reads file sends stringIO to API
-#     #TODO turns stringIO into pgn object
-#     #TODO transforms into move_df
-#     X_pred_DataFrame = pd.DataFrame(move_df)
-
-#    rtp_input(source="input", white=True, **kwargs)
-
+def predict(file_str):
     
-#     return {'prediction': prediction[0]}
-    #TODO return model#s prediction
-    # collect prediction from GCP model -> needs training process pipelined?
-    # https://kitt.lewagon.com/camps/673/lectures/content/07-Data-Engineering_02.html
+    prediction = rtp_input(source="input", white=True, pgn=file_str)
+   
+    return {'predictions': prediction}
