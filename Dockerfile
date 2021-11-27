@@ -10,7 +10,7 @@ COPY cc_detector/ cc_detector/
 COPY chessapi.py /chessapi.py
 
 # credentials
-RUN sh scripts/gcpsecret.sh
+RUN chmod +x scripts/gcpsecret.sh
 
 COPY requirements.txt /requirements.txt
 
