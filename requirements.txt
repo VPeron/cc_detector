@@ -7,7 +7,7 @@ wheel>=0.29
 # data science
 numpy>=1.17
 pandas
-scikit-learn
+scikit-learn==1.0.1
 tensorflow==2.7.0
 mlflow
 

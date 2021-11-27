@@ -1,4 +1,3 @@
-from os import read
 import pandas as pd
 import numpy as np
 
@@ -13,7 +12,7 @@ from cc_detector.ids_generator import players_id_list
 from cc_detector.game import set_game_dict, game_info_extractor
 from cc_detector.move import set_move_dict, move_info_extractor,\
     bitmap_representer, castling_right, en_passant_opp, halfmove_clock,\
-    binary_board_df#, move_dict_maker
+    binary_board_df
 
 import pickle
 from google.cloud import storage
@@ -45,23 +44,9 @@ class ChessData:
         #Define move limit for data padding
         self.max_game_length = 100
 
-    def import_data(
-            self,
-            source='local',
-            import_lim=50,
-            **kwargs):
-        '''
-        Takes the path to a pgn file as an input as well as a number of
-        games to be read from the pgn file (Default: import_lim=50).
-        Returns three Pandas dataframes (df_players, df_games, df_moves).
-        '''
-
-        #client = storage.Client()
-        #bucket = client.bucket(BUCKET_NAME)
-        #blobs = list(bucket.list_blobs(prefix='data/'))
-        ## read_output = blobs.download_as_string()
-        #print(blobs)
-
+    def read_data(self,
+                  source='local',
+                  **kwargs):
         if ((source == 'local') & ('data_path' not in kwargs.keys())):
             data_path = 'raw_data/Fics_data_pc_data.pgn'
             pgn = open(data_path, encoding='UTF-8')
@@ -81,6 +66,21 @@ class ChessData:
 
         if source=="input":
             pgn = kwargs['pgn']
+
+        return pgn
+
+    def import_data(
+            self,
+            source='local',
+            import_lim=50,
+            **kwargs):
+        '''
+        Takes the path to a pgn file as an input as well as a number of
+        games to be read from the pgn file (Default: import_lim=50).
+        Returns three Pandas dataframes (df_players, df_games, df_moves).
+        '''
+
+        pgn = self.read_data(source, **kwargs)
 
         # read file
         game_counter = 0
@@ -156,29 +156,47 @@ class ChessData:
         print(
             f'{games_parsed} games with a total number of {move_counter} moves parsed.'
         )
+        return players, games, move_dict
 
-        df_players_temp = pd.DataFrame(players)
+    def data_df_maker(self,
+                      source="local",
+                      import_lim=50,
+                      api=False,
+                      **kwargs):
+        if api==False:
+            players, games, move_dict = self.import_data(source=source,
+                                                        import_lim=import_lim,
+                                                        **kwargs)
+            df_players_temp = pd.DataFrame(players)
 
-        df_games = pd.DataFrame(games)
-        df_moves = pd.DataFrame(move_dict)
-        df_players = players_id_list(df_players_temp)
+            df_games = pd.DataFrame(games)
+            df_players = players_id_list(df_players_temp)
+            df_moves = pd.DataFrame(move_dict)
+            return df_players, df_games, df_moves
 
-        return df_players, df_games, df_moves
-
+        if api==True:
+            move_dict = kwargs["input_dict"]
+            df_moves = pd.DataFrame(move_dict)
+            return df_moves
 
     def feature_df_maker(self,
                          move_df,
                          max_game_length=100,
                          training=True,
+                         api=False,
                          source="local"):
         '''
         Takes a dataframe with moves and transforms them into a padded 3D numpy array
         (a list of 2D numpy arrays, i.e. time series of the moves within one player's game).
         Returns up to two arrays: X and, if training=True, y.
         '''
-
-        #get binary board representation for each move
-        df_wide = binary_board_df(move_df)
+        if api==True:
+            df_wide = pd.DataFrame(move_df["Bitmap_moves"].tolist(),
+                                   columns = [i for i in range(768)])
+        if api==False:
+            #get binary board representation for each move
+            df_wide = binary_board_df(move_df)
+            print(df_wide.head())
 
         #get non-board-representation features from move_df
         game_infos = move_df[[
@@ -211,20 +229,25 @@ class ChessData:
                 with open("models/minmax_scaler.pkl", "wb") as file:
                     pickle.dump(scaler, file)
             if ((source=="gcp") or (source=="input")):
-                client = storage.Client()
-                bucket = client.bucket(BUCKET_NAME)
-                blob = bucket.blob(SCALER_STORAGE_LOCATION)
-                pickle_out = pickle.dumps(scaler)
-                blob.upload_from_string(pickle_out)
+                # client = storage.Client()
+                # bucket = client.bucket(BUCKET_NAME)
+                # blob = bucket.blob(SCALER_STORAGE_LOCATION)
+                # pickle_out = pickle.dumps(scaler)
+                # blob.upload_from_string(pickle_out)
+                with open("minmax_scaler.pkl", "wb") as file:
+                    pickle.dump(scaler, file)
+                client = storage.Client().bucket(BUCKET_NAME)
+                blob = client.blob(SCALER_STORAGE_LOCATION)
+                blob.upload_from_filename('minmax_scaler.pkl')
         else:
             if source=="local":
                 scaler = pickle.load(open("models/minmax_scaler.pkl", "rb"))
             if ((source == "gcp") or (source == "input")):
                 client = storage.Client().bucket(BUCKET_NAME)
                 blob = client.blob(SCALER_STORAGE_LOCATION)
-                blob.download_to_filename("models/minmax_scaler.pkl")
+                blob.download_to_filename("minmax_scaler.pkl")
                 print("Scaler downloaded from Google Cloud Storage")
-                scaler = pickle.load(open("models/minmax_scaler.pkl", "rb"))
+                scaler = pickle.load(open("minmax_scaler.pkl", "rb"))
             df_wide_full["Halfmove_clock"] = scaler.transform(
                 df_wide_full[["Halfmove_clock"]])
 
@@ -263,9 +286,9 @@ class ChessData:
             array_list = []
             for game in X_pad:
                 game = np.pad(game,
-                              ((0, (max_game_length - game.shape[0])), (0, 0)),
-                              "constant",
-                              constant_values=(-999., ))
+                            ((0, (max_game_length - game.shape[0])), (0, 0)),
+                            "constant",
+                            constant_values=(-999., ))
                 array_list.append(game)
             X_new = np.stack(array_list, axis=0)
 
@@ -287,7 +310,7 @@ class ChessData:
 
 if __name__ == "__main__":
     #Print heads of imported dfs
-    player_df, game_df, move_df = ChessData().import_data()
+    player_df, game_df, move_df = ChessData().data_df_maker()
 
     print(player_df.head())
     print(game_df.head())
