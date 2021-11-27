@@ -1,1 +1,0 @@
-echo ${{secrets.GCPCREDS}} > ccdetectorproject-e3fc70984fb0.json
