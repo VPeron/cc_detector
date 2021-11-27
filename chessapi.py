@@ -26,18 +26,20 @@ def index():
     return {"OK": True}
 
 
-@app.get("/data")
-def data():
-    chessdata = ChessData()
-    player_df, game_df, move_df = chessdata.data_df_maker(source='gcp')
-    players = player_df.to_dict()
-    games = game_df.to_dict()
-    moves = move_df.to_dict()
-    return {
-        'players':players,
-        'games':games,
-        'moves':moves
-    }
+
+# @app.get("/data")
+# def data():
+#     chessdata = ChessData()
+#     player_df, game_df, move_df = chessdata.import_data(source='gcp')
+#     players = player_df.to_dict()   
+#     games = game_df.to_dict()
+#     moves = move_df.to_dict()
+#     return {
+#         'players':players,
+#         'games':games,
+#         'moves':moves
+#     }
+
 
 class Item(BaseModel):
     Bitmap_moves: list
