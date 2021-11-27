@@ -1,5 +1,5 @@
 import chess
-from fastapi import FastAPI, Query, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from cc_detector.predict import rtp_input
 from cc_detector.data import ChessData
@@ -31,7 +31,7 @@ def index():
 # def data():
 #     chessdata = ChessData()
 #     player_df, game_df, move_df = chessdata.import_data(source='gcp')
-#     players = player_df.to_dict()   
+#     players = player_df.to_dict()
 #     games = game_df.to_dict()
 #     moves = move_df.to_dict()
 #     return {
