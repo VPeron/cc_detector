@@ -83,8 +83,6 @@ def predict(request: Item):
         "Halfmove_clock": request.Halfmove_clock
     }
 
-    print(move_dict['Game_ID'])
-
     move_df = chessdata.data_df_maker(api=True, input_dict=move_dict)
 
     prediction = rtp_input(move_df, source="gcp", white=True)
