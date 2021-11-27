@@ -9,9 +9,6 @@ COPY cc_detector/ cc_detector/
 # API code
 COPY chessapi.py /chessapi.py
 
-# credentials
-# RUN echo $JSON_CREDENDTIALS > credentials.json
-
 COPY requirements.txt /requirements.txt
 
 RUN pip install --upgrade pip

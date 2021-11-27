@@ -1,5 +1,5 @@
 import chess
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from cc_detector.predict import rtp_input
 from cc_detector.data import ChessData
@@ -7,6 +7,7 @@ from cc_detector.predict import rtp_input
 import pandas as pd
 from google.cloud import storage
 import chess.pgn
+from pydantic import BaseModel
 
 app = FastAPI()
 
@@ -40,41 +41,54 @@ def index():
 #     }
 
 
-@app.get("/predict")
-def predict(Bitmap_moves: list = Query([]),
-            Game_ID: list = Query([]),
-            FEN_moves: list = Query([]),
-            WhiteIsComp: list = Query([]),
-            turn: list = Query([]),
-            Castling_right: list = Query([]),
-            EP_option: list = Query([]),
-            Pseudo_EP_option: list = Query([]),
-            Halfmove_clock: list = Query([])):
+class Item(BaseModel):
+    Bitmap_moves: list
+    Game_ID: list
+    FEN_moves: list
+    WhiteIsComp: list
+    turn: list
+    Castling_right: list
+    EP_option: list
+    Pseudo_EP_option: list
+    Halfmove_clock: list
+
+@app.post("/predict")
+def predict(request: Item):
+    # Bitmap_moves: list = Query([]),
+    # Game_ID: list = Query([]),
+    # FEN_moves: list = Query([]),
+    # WhiteIsComp: list = Query([]),
+    # turn: list = Query([]),
+    # Castling_right: list = Query([]),
+    # EP_option: list = Query([]),
+    # Pseudo_EP_option: list = Query([]),
+    # Halfmove_clock: list = Query([])):
 
     chessdata = ChessData()
 
     Bitmap_moves_mod = []
-    for move in Bitmap_moves:
+    for move in request.Bitmap_moves:
         move = move[:-1]
         Bitmap_move_temp = move.split("-")
         Bitmap_move_temp = [int(x) for x in Bitmap_move_temp]
         Bitmap_moves_mod.append(Bitmap_move_temp)
 
     move_dict = {
-        'Game_ID': Game_ID,
-        "FEN_moves": FEN_moves,
+        'Game_ID': request.Game_ID,
+        "FEN_moves": request.FEN_moves,
         "Bitmap_moves": Bitmap_moves_mod,
-        "WhiteIsComp": WhiteIsComp,
-        "turn": turn,
-        "Castling_right": Castling_right,
-        "EP_option": EP_option,
-        "Pseudo_EP_option": Pseudo_EP_option,
-        "Halfmove_clock": Halfmove_clock
+        "WhiteIsComp": request.WhiteIsComp,
+        "turn": request.turn,
+        "Castling_right": request.Castling_right,
+        "EP_option": request.EP_option,
+        "Pseudo_EP_option": request.Pseudo_EP_option,
+        "Halfmove_clock": request.Halfmove_clock
     }
+
+    print(move_dict['Game_ID'])
 
     move_df = chessdata.data_df_maker(api=True, input_dict=move_dict)
 
     prediction = rtp_input(move_df, source="gcp", white=True)
 
     return {'prediction': str(prediction)}
-
