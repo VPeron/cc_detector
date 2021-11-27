@@ -30,7 +30,7 @@ def rtp_input(move_df, source="local", white=True, api=True, **kwargs):
     #                                                         **kwargs)
     X_pad = Trainer().transform_move_data(move_df,
                                           training=False,
-                                          source="local",
+                                          source="gcp",
                                           api=api)
 
     if white:

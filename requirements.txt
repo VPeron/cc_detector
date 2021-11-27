@@ -33,6 +33,7 @@ memoized-property
 termcolor
 uuid
 shortuuid
+pydantic
 
 #chess packages
 chess
