@@ -5,9 +5,10 @@ import chess
 import chess.pgn
 
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn.impute import SimpleImputer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
-from sklearn.pipeline import make_pipeline
-from sklearn.compose import make_column_transformer
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
 
 from cc_detector.player import set_player_dict, player_info_extractor
 from cc_detector.ids_generator import players_id_list
@@ -21,6 +22,7 @@ import pickle
 from google.cloud import storage
 from cc_detector.params import BUCKET_TRAIN_DATA_PATH, BUCKET_NAME, SCALER_STORAGE_LOCATION
 import io
+import warnings
 
 
 class ChessData:
@@ -110,15 +112,21 @@ class ChessData:
 
                     # Game info parsing
                     games = game_info_extractor(game=game,
-                                                game_dict=game_dict,
-                                                game_counter=game_counter)
+                                                game_dict=game_dict)
 
                     #cycle through evals
                     for variation in variations:
                         eval = variation.comment
-                        eval = eval.split('[%eval ')[1].split(']')[0]
-                        eval_log['evals'].append(float(eval))
-                    move_dict["Evaluation"].append(eval_log["evals"])
+                        if "%eval" in eval:
+                            eval = eval.split('[%eval ')[1].split(']')[0]
+                            eval_log['evals'].append(float(eval))
+                        else:
+                            eval_log['evals'] = "NA"
+                    if eval_log['evals'] != "NA":
+                        move_dict["Evaluation"].append(eval_log["evals"])
+                    else:
+                        move_dict["Evaluation"] = "NA"
+
 
                     # Moves info parsing
                     white = True
@@ -165,7 +173,10 @@ class ChessData:
                 print('No further games to load.')
                 break
 
-        move_dict["Evaluation"] = self.flatten_list(move_dict["Evaluation"])
+        if move_dict["Evaluation"] != "NA":
+            move_dict["Evaluation"] = self.flatten_list(
+                move_dict["Evaluation"]
+                )
 
         print(f'{game_counter} games read.')
         print(
@@ -212,93 +223,106 @@ class ChessData:
             #get binary board representation for each move
             df_wide = binary_board_df(move_df)
 
-        #get non-board-representation features from move_df
-        game_infos = move_df[[
-            "Game_ID", "turn", "WhiteIsComp", "Castling_right", "EP_option",
-            "Halfmove_clock", "Evaluation"
-        ]]
+            #get non-board-representation features from move_df
+
+        game_infos_num = move_df[[
+            "Castling_right",
+            "EP_option",
+            "Halfmove_clock",
+            "Evaluation"
+            ]]
+
+        if "NA" in list(game_infos_num["Evaluation"].values):
+            if (game_infos_num["Evaluation"].value_counts()["NA"]) > (
+                len(game_infos_num["Evaluation"]) * 0.5):
+                game_infos_num = game_infos_num.drop(columns=["Evaluation"])
+        game_infos_temp = move_df[[
+            "Game_ID", "turn", "WhiteIsComp"
+            ]]
 
         # concatenate board representations with other features
-        df_wide_full = df_wide.join(game_infos)
+        df_wide_full = df_wide.join(game_infos_num)
+
+        # Scale features
+        if "Evaluation" in df_wide_full.columns:
+            df_wide_full["Evaluation"] = df_wide_full["Evaluation"].apply(
+                lambda x: np.nan if x == "NA" else x
+                )
+
+            if training:
+                minmax_scaler = MinMaxScaler()
+                std_scaler = StandardScaler()
+                imputer = SimpleImputer(strategy="mean")
+
+                eval_transformer = Pipeline([("imputer", imputer),
+                                             ("std_scaler", std_scaler)])
+
+                preproc_basic = ColumnTransformer(transformers=[
+                    ("minmax_scaler", minmax_scaler, ["Halfmove_clock"]),
+                    ("eval_trans", eval_transformer, ["Evaluation"])
+                ], remainder='passthrough')
+
+                preproc_basic.fit(df_wide_full)
+                df_wide_full = pd.DataFrame(preproc_basic.transform(df_wide_full))
+
+                if source=="local":
+                    with open("models/scaler.pkl", "wb") as file:
+                        pickle.dump(preproc_basic, file)
+                if ((source=="gcp") or (source=="input")):
+                    with open("scaler.pkl", "wb") as file:
+                        pickle.dump(preproc_basic, file)
+                    client = storage.Client().bucket(BUCKET_NAME)
+                    blob = client.blob(SCALER_STORAGE_LOCATION)
+                    blob.upload_from_filename('scaler.pkl')
+            else:
+                if source=="local":
+                    preproc_basic = pickle.load(open("models/scaler.pkl", "rb"))
+                if ((source == "gcp") or (source == "input")):
+                    client = storage.Client().bucket(BUCKET_NAME)
+                    blob = client.blob(SCALER_STORAGE_LOCATION)
+                    blob.download_to_filename("scaler.pkl")
+                    print("Scaler downloaded from Google Cloud Storage")
+                    preproc_basic = pickle.load(open("scaler.pkl", "rb"))
+                df_wide_full = preproc_basic.transform(df_wide_full)
+        else:
+            if training:
+                scaler = MinMaxScaler()
+                scaler.fit(df_wide_full[["Halfmove_clock"]])
+                df_wide_full["Halfmove_clock"] = scaler.transform(
+                    df_wide_full[["Halfmove_clock"]])
+                if source=="local":
+                    with open("models/minmax_scaler.pkl", "wb") as file:
+                        pickle.dump(scaler, file)
+                if ((source=="gcp") or (source=="input")):
+                    with open("minmax_scaler.pkl", "wb") as file:
+                        pickle.dump(scaler, file)
+                    client = storage.Client().bucket(BUCKET_NAME)
+                    blob = client.blob(SCALER_STORAGE_LOCATION)
+                    blob.upload_from_filename('minmax_scaler.pkl')
+            else:
+                if source=="local":
+                    scaler = pickle.load(open("models/minmax_scaler.pkl", "rb"))
+                if ((source == "gcp") or (source == "input")):
+                    client = storage.Client().bucket(BUCKET_NAME)
+                    blob = client.blob(SCALER_STORAGE_LOCATION)
+                    blob.download_to_filename("minmax_scaler.pkl")
+                    print("Scaler downloaded from Google Cloud Storage")
+                    scaler = pickle.load(open("minmax_scaler.pkl", "rb"))
+                df_wide_full["Halfmove_clock"] = scaler.transform(
+                    df_wide_full[["Halfmove_clock"]])
+
+        # Merge dataframes
+        df_wide_full = df_wide_full.join(game_infos_temp)
 
         # Generate binary feature that indicates if player is computer
         if training:
-            df_wide_full["Computer"] = df_wide_full.apply(
-                lambda x: 1 if (
-                (x["WhiteIsComp"] == "Yes") and (x["turn"] == "white")
-                ) or (
-                    (x["WhiteIsComp"] == "No") and (x["turn"] == "black")
-                    ) else 0,
-                axis=1)
+            df_wide_full["Computer"] = df_wide_full.apply(lambda x: 1 if (
+                (x["WhiteIsComp"] == "Yes") and (x["turn"] == "white")) or (
+                    (x["WhiteIsComp"] == "No") and
+                    (x["turn"] == "black")) else 0,
+                                                          axis=1)
         else:
             df_wide_full["Computer"] = "NA"
-
-        # Scale features
-        if training:
-
-            minmax_scaler = MinMaxScaler()
-            std_scaler = StandardScaler()
-
-            preproc_basic = make_column_transformer(
-                (minmax_scaler, ["Halfmove_clock"]),
-                (std_scaler, ["Evaluation"]),
-                remainder='passthrough')
-
-            preproc_basic.fit(df_wide_full)
-            df_wide_full = preproc_basic.transform(df_wide_full)
-
-
-            if source=="local":
-                with open("models/scaler.pkl", "wb") as file:
-                    pickle.dump(preproc_basic, file)
-            if ((source=="gcp") or (source=="input")):
-                with open("scaler.pkl", "wb") as file:
-                    pickle.dump(preproc_basic, file)
-                client = storage.Client().bucket(BUCKET_NAME)
-                blob = client.blob(SCALER_STORAGE_LOCATION)
-                blob.upload_from_filename('scaler.pkl')
-        else:
-            if source=="local":
-                preproc_basic = pickle.load(open("models/scaler.pkl", "rb"))
-            if ((source == "gcp") or (source == "input")):
-                client = storage.Client().bucket(BUCKET_NAME)
-                blob = client.blob(SCALER_STORAGE_LOCATION)
-                blob.download_to_filename("scaler.pkl")
-                print("Scaler downloaded from Google Cloud Storage")
-                preproc_basic = pickle.load(open("scaler.pkl", "rb"))
-            df_wide_full = preproc_basic.transform(df_wide_full)
-
-        print(pd.DataFrame(df_wide_full))
-
-        #     scaler = MinMaxScaler()
-        #     scaler.fit(df_wide_full[["Halfmove_clock"]])
-        #     df_wide_full["Halfmove_clock"] = scaler.transform(
-        #         df_wide_full[["Halfmove_clock"]])
-        #     if source=="local":
-        #         with open("models/minmax_scaler.pkl", "wb") as file:
-        #             pickle.dump(scaler, file)
-        #     if ((source=="gcp") or (source=="input")):
-        #         # client = storage.Client()
-        #         # bucket = client.bucket(BUCKET_NAME)
-        #         # blob = bucket.blob(SCALER_STORAGE_LOCATION)
-        #         # pickle_out = pickle.dumps(scaler)
-        #         # blob.upload_from_string(pickle_out)
-        #         with open("minmax_scaler.pkl", "wb") as file:
-        #             pickle.dump(scaler, file)
-        #         client = storage.Client().bucket(BUCKET_NAME)
-        #         blob = client.blob(SCALER_STORAGE_LOCATION)
-        #         blob.upload_from_filename('minmax_scaler.pkl')
-        # else:
-        #     if source=="local":
-        #         scaler = pickle.load(open("models/minmax_scaler.pkl", "rb"))
-        #     if ((source == "gcp") or (source == "input")):
-        #         client = storage.Client().bucket(BUCKET_NAME)
-        #         blob = client.blob(SCALER_STORAGE_LOCATION)
-        #         blob.download_to_filename("minmax_scaler.pkl")
-        #         print("Scaler downloaded from Google Cloud Storage")
-        #         scaler = pickle.load(open("minmax_scaler.pkl", "rb"))
-        #     df_wide_full["Halfmove_clock"] = scaler.transform(
-        #         df_wide_full[["Halfmove_clock"]])
 
         #Generate Target vector
         if training:
@@ -367,6 +391,7 @@ class ChessData:
             else:
                 flat_list.append(element)
         return flat_list
+
 
 if __name__ == "__main__":
     #Print heads of imported dfs

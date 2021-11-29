@@ -111,8 +111,8 @@ class Trainer():
 
 
     def train_model(self, X_train, y_train,
-                    recurrent_dropout=0.3,
-                    dense_dropout=0.3,
+                    recurrent_dropout=0.2,
+                    dense_dropout=0.2,
                     l1_reg_rate=0.001,
                     lstm_start_units=128,
                     dense_start_units=64,
@@ -129,8 +129,8 @@ class Trainer():
         model = Sequential()
 
         model.add(
-            layers.Masking(mask_value=-999,
-                           input_shape=(self.max_game_length, 771)))
+            layers.Masking(mask_value=-999.,
+                           input_shape=(self.max_game_length, X_train.shape[2])))
         model.add(
             layers.LSTM(units=lstm_start_units,
                         activation='tanh',
