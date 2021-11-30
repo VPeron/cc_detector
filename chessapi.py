@@ -89,9 +89,8 @@ def predict(request: Item):
     }
 
     player_color = request.Player_color
-    if player_color=="White":
-        white=True
-    else:
+    white = True
+    if player_color=="Black":
         white=False
 
     move_df = chessdata.data_df_maker(api=True, input_dict=move_dict)
