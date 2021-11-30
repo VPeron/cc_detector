@@ -20,7 +20,8 @@ from cc_detector.move import set_move_dict, move_info_extractor,\
 import pickle
 #import joblib
 from google.cloud import storage
-from cc_detector.params import BUCKET_TRAIN_DATA_PATH, BUCKET_NAME, SCALER_STORAGE_LOCATION
+from cc_detector.params import BUCKET_TRAIN_DATA_PATH, BUCKET_NAME,\
+    SCALER_STORAGE_LOCATION, SCALER_STORAGE_LOCATION_EVAL
 import io
 import warnings
 
@@ -272,14 +273,14 @@ class ChessData:
                     with open("scaler.pkl", "wb") as file:
                         pickle.dump(preproc_basic, file)
                     client = storage.Client().bucket(BUCKET_NAME)
-                    blob = client.blob(SCALER_STORAGE_LOCATION)
+                    blob = client.blob(SCALER_STORAGE_LOCATION_EVAL)
                     blob.upload_from_filename('scaler.pkl')
             else:
                 if source=="local":
                     preproc_basic = pickle.load(open("models/scaler.pkl", "rb"))
                 if ((source == "gcp") or (source == "input")):
                     client = storage.Client().bucket(BUCKET_NAME)
-                    blob = client.blob(SCALER_STORAGE_LOCATION)
+                    blob = client.blob(SCALER_STORAGE_LOCATION_EVAL)
                     blob.download_to_filename("scaler.pkl")
                     print("Scaler downloaded from Google Cloud Storage")
                     preproc_basic = pickle.load(open("scaler.pkl", "rb"))
