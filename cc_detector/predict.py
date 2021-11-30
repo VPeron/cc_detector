@@ -17,7 +17,7 @@ def predict_comp(X, source='local'):
     prediction = model.predict(X)
     return prediction
 
-def rtp_input(move_df, source="local", white=True, api=True, **kwargs):
+def rtp_input(move_df, source="gcp", white=True, api=True, **kwargs):
     '''
     Reads and transforms the content of a pgn file, then returns a
     prediction if the chosen player (default: white=True) is a computer or not.
@@ -30,7 +30,7 @@ def rtp_input(move_df, source="local", white=True, api=True, **kwargs):
     #                                                         **kwargs)
     X_pad = Trainer().transform_move_data(move_df,
                                           training=False,
-                                          source="gcp",
+                                          source=source,
                                           api=api)
 
     if white:

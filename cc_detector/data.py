@@ -15,7 +15,7 @@ from cc_detector.ids_generator import players_id_list
 from cc_detector.game import set_game_dict, game_info_extractor
 from cc_detector.move import set_move_dict, move_info_extractor,\
     bitmap_representer, castling_right, en_passant_opp, halfmove_clock,\
-    binary_board_df
+    binary_board_df, get_bitmap_header
 
 import pickle
 #import joblib
@@ -218,8 +218,9 @@ class ChessData:
         Returns up to two arrays: X and, if training=True, y.
         '''
         if api==True:
-            df_wide = pd.DataFrame(move_df["Bitmap_moves"].tolist(),
-                                   columns = [i for i in range(768)])
+            df_wide = pd.DataFrame(
+                move_df["Bitmap_moves"].tolist(),
+                columns=get_bitmap_header())  #[i for i in range(768)])
         if api==False:
             #get binary board representation for each move
             df_wide = binary_board_df(move_df)
@@ -354,7 +355,7 @@ class ChessData:
             games_list,
             dtype='float32',
             padding='post',
-            value=-999,
+            value=-999.,
         )
 
         if X_pad.shape[1] < max_game_length:
