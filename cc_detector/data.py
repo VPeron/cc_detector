@@ -120,13 +120,14 @@ class ChessData:
                         eval = variation.comment
                         if "%eval" in eval:
                             eval = eval.split('[%eval ')[1].split(']')[0]
-                            eval_log['evals'].append(float(eval))
+                            try:
+                                eval_log['evals'].append(float(eval))
+                            except ValueError:
+                                eval_log['evals'].append("NA")
                         else:
-                            eval_log['evals'] = "NA"
-                    if eval_log['evals'] != "NA":
-                        move_dict["Evaluation"].append(eval_log["evals"])
-                    else:
-                        move_dict["Evaluation"] = "NA"
+                            eval_log['evals'].append("NA")
+
+                    move_dict["Evaluation"].append(eval_log["evals"])
 
 
                     # Moves info parsing
