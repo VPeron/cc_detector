@@ -283,7 +283,7 @@ class ChessData:
                     blob.download_to_filename("scaler.pkl")
                     print("Scaler downloaded from Google Cloud Storage")
                     preproc_basic = pickle.load(open("scaler.pkl", "rb"))
-                df_wide_full = preproc_basic.transform(df_wide_full)
+                df_wide_full = pd.DataFrame(preproc_basic.transform(df_wide_full))
         else:
             if training:
                 scaler = MinMaxScaler()

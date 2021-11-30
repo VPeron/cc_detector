@@ -113,7 +113,7 @@ class Trainer():
     def train_model(self, X_train, y_train,
                     recurrent_dropout=0.2,
                     dense_dropout=0.2,
-                    l1_reg_rate=0.001,
+                    l1_reg_rate=None, #0.001,
                     lstm_start_units=128,
                     dense_start_units=64,
                     verbose=0,
@@ -158,9 +158,10 @@ class Trainer():
         # The compilation
         rmsprop_opt = RMSprop(learning_rate=0.001)
 
-        model.compile(loss='binary_crossentropy',
-                      optimizer=rmsprop_opt,
-                      metrics=["accuracy"])
+        model.compile(
+            loss='binary_crossentropy',
+            optimizer='rmsprop',  #rmsprop_opt,
+            metrics=["accuracy"])
 
         # The fit
         es = EarlyStopping(restore_best_weights=True, patience=5)
