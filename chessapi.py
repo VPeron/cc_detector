@@ -52,6 +52,7 @@ class Item(BaseModel):
     Pseudo_EP_option: list
     Halfmove_clock: list
     Evaluation: list
+    Player_color: str
 
 @app.post("/predict")
 def predict(request: Item):
@@ -87,8 +88,14 @@ def predict(request: Item):
         "Evaluation": request.Evaluation
     }
 
+    player_color = request.Player_color
+    if player_color=="White":
+        white=True
+    else:
+        white=False
+
     move_df = chessdata.data_df_maker(api=True, input_dict=move_dict)
 
-    prediction = rtp_input(move_df, source="gcp", white=True)
+    prediction = rtp_input(move_df, source="gcp", white=white)
 
     return {'prediction': str(prediction)}
