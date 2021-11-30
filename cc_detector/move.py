@@ -14,7 +14,8 @@ def set_move_dict():
         'Castling_right': [],
         'EP_option': [],
         'Pseudo_EP_option': [],
-        'Halfmove_clock': []
+        'Halfmove_clock': [],
+        'Evaluation': []
         }
     return move_dict
 

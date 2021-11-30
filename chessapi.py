@@ -51,6 +51,7 @@ class Item(BaseModel):
     EP_option: list
     Pseudo_EP_option: list
     Halfmove_clock: list
+    Evaluation: list
 
 @app.post("/predict")
 def predict(request: Item):
@@ -82,7 +83,8 @@ def predict(request: Item):
         "Castling_right": request.Castling_right,
         "EP_option": request.EP_option,
         "Pseudo_EP_option": request.Pseudo_EP_option,
-        "Halfmove_clock": request.Halfmove_clock
+        "Halfmove_clock": request.Halfmove_clock,
+        "Evaluation": request.Evaluation
     }
 
     move_df = chessdata.data_df_maker(api=True, input_dict=move_dict)

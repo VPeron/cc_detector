@@ -1,4 +1,3 @@
-from typing_extensions import ParamSpecArgs
 import pandas as pd
 import numpy as np
 from pandas.core.frame import DataFrame
@@ -10,6 +9,7 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras import layers, regularizers
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.optimizers import RMSprop
+from tensorflow.keras.losses import BinaryCrossentropy
 from sklearn.model_selection import train_test_split
 
 from memoized_property import memoized_property
@@ -111,9 +111,9 @@ class Trainer():
 
 
     def train_model(self, X_train, y_train,
-                    recurrent_dropout=0.3,
-                    dense_dropout=0.3,
-                    l1_reg_rate=0.001,
+                    recurrent_dropout=0.2,
+                    dense_dropout=0.2,
+                    l1_reg_rate=None, #0.001,
                     lstm_start_units=128,
                     dense_start_units=64,
                     verbose=0,
@@ -126,53 +126,54 @@ class Trainer():
         if 'l2_reg_rate' in kwargs.keys():
             reg_l2 = regularizers.L2(kwargs['l2_reg_rate'])
 
-        model = Sequential()
+        self.model = Sequential()
 
-        model.add(
-            layers.Masking(mask_value=-999,
-                           input_shape=(self.max_game_length, 771)))
-        model.add(
+        self.model.add(
+            layers.Masking(mask_value=-999.,
+                           input_shape=(self.max_game_length, X_train.shape[2])))
+        self.model.add(
             layers.LSTM(units=lstm_start_units,
                         activation='tanh',
                         return_sequences=True,
                         recurrent_dropout=recurrent_dropout))
-        model.add(
+        self.model.add(
             layers.LSTM(units=int(lstm_start_units / 2),
                         activation='tanh',
                         return_sequences=False,
                         recurrent_dropout=recurrent_dropout))
-        model.add(
+        self.model.add(
             layers.Dense(units=dense_start_units,
                          activation='relu',
                          kernel_regularizer=reg_l1))
-        model.add(layers.Dropout(dense_dropout))
-        model.add(
+        self.model.add(layers.Dropout(dense_dropout))
+        self.model.add(
             layers.Dense(units=int(dense_start_units / 2),
                          activation='relu',
                          kernel_regularizer=reg_l1))
-        model.add(layers.Dropout(dense_dropout))
-        model.add(
+        self.model.add(layers.Dropout(dense_dropout))
+        self.model.add(
             layers.Dense(units=1,
                         activation="sigmoid"))
 
         # The compilation
-        rmsprop_opt = RMSprop(learning_rate=0.001)
+        rmsprop_opt = RMSprop(learning_rate=0.0001)
 
-        model.compile(loss='binary_crossentropy',
-                      optimizer=rmsprop_opt,
-                      metrics=["accuracy"])
+        self.model.compile(
+            loss= BinaryCrossentropy(), #'binary_crossentropy',
+            optimizer= rmsprop_opt,
+            metrics=["accuracy"])
 
         # The fit
-        es = EarlyStopping(restore_best_weights=True, patience=5)
+        es = EarlyStopping(restore_best_weights=True, patience=10)
 
-        history = model.fit(X_train, y_train,
-                  batch_size=32,
-                  epochs=50,
+        history = self.model.fit(X_train, y_train,
+                  batch_size=64,
+                  epochs=500,
                   callbacks=[es],
                   validation_split=0.2,
                   verbose=verbose)
 
-        self.model = model
+        #self.model = model
         self.mlflow_log_param("model", "Sequential: LSTM (2 LSTM layers, 2 Dense layers)")
         self.mlflow_log_param("training_epochs", max(history.epoch)+1)
         self.mlflow_log_param("l1_regularizer_rate", l1_reg_rate)
@@ -185,7 +186,7 @@ class Trainer():
         print('''Model has been trained and saved 💪 Training params have been logged to MLflow:
         https://mlflow.lewagon.co/#/experiments/21242''')
 
-        self.save_model_to_gcp(model)
+        self.save_model_to_gcp(self.model)
 
         return history
 
@@ -285,7 +286,7 @@ if __name__ == "__main__":
     #Retrieve data from file
     player_df, game_df, move_df = trainer.get_data(
         source="gcp",
-        import_lim=2000
+        import_lim=5000
         )
 
     #Transform data into correct shape

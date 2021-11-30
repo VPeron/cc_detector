@@ -14,8 +14,10 @@ def set_game_dict():
         }
     return game_dict
 
+
 def game_info_extractor(game, game_dict):
-    game_dict['Game_ID'].append(game.headers['FICSGamesDBGameNo'])
+    if 'FICSGamesDBGameNo' in game.headers:
+        game_dict['Game_ID'].append(game.headers['FICSGamesDBGameNo'])
     game_dict['White'].append(game.headers['White'])  # dummy ID
     game_dict['Black'].append(game.headers['Black'])  # dummy ID
     game_dict['White_Elo'].append(game.headers['WhiteElo'])
