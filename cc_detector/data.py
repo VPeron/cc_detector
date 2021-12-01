@@ -3,6 +3,7 @@ import numpy as np
 
 import chess
 import chess.pgn
+from stockfish import Stockfish
 
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.impute import SimpleImputer
@@ -49,6 +50,13 @@ class ChessData:
 
         #Define move limit for data padding
         self.max_game_length = 100
+
+        #Set stockfish engine for move evaluation
+        self.stockfish= Stockfish(parameters={"Threads": 2,
+                                              'Min Split Depth': 26,
+                                              'Ponder':True})
+        self.stockfish.set_elo_rating(2600)
+        self.stockfish.set_skill_level(30)
 
     def read_data(self,
                   source='local',
@@ -113,7 +121,8 @@ class ChessData:
 
                     # Game info parsing
                     games = game_info_extractor(game=game,
-                                                game_dict=game_dict)
+                                                game_dict=game_dict,
+                                                game_counter=game_counter)
 
                     #cycle through evals
                     for variation in variations:
@@ -144,7 +153,8 @@ class ChessData:
                         #Extract GAME ID and FEN moves
                         move_dict = move_info_extractor(game=game,
                                                         board=board,
-                                                        move_dict=move_dict)
+                                                        move_dict=move_dict,
+                                                        game_counter=game_counter)
 
                         #Generate bitmap representation of FENs
                         move_dict = bitmap_representer(board=board,
@@ -218,16 +228,25 @@ class ChessData:
         (a list of 2D numpy arrays, i.e. time series of the moves within one player's game).
         Returns up to two arrays: X and, if training=True, y.
         '''
+        #get binary board representation for each move
         if api==True:
             df_wide = pd.DataFrame(
                 move_df["Bitmap_moves"].tolist(),
-                columns=get_bitmap_header())  #[i for i in range(768)])
+                columns=get_bitmap_header())
         if api==False:
-            #get binary board representation for each move
             df_wide = binary_board_df(move_df)
 
-            #get non-board-representation features from move_df
+        #Evaluate moves with stockfish
+        eval_list = []
+        for i in move_df["FEN_moves"]:
+            self.stockfish.set_fen_position(i)
+            try:
+                eval_list.append(self.stockfish.get_evaluation()["value"])
+            except ValueError:
+                eval_list.append("NA")
+        move_df["Evaluation"] = eval_list
 
+        #get non-board-representation features from move_df
         game_infos_num = move_df[[
             "Castling_right",
             "EP_option",
@@ -239,6 +258,7 @@ class ChessData:
             if (game_infos_num["Evaluation"].value_counts()["NA"]) > (
                 len(game_infos_num["Evaluation"]) * 0.5):
                 game_infos_num = game_infos_num.drop(columns=["Evaluation"])
+
         game_infos_temp = move_df[[
             "Game_ID", "turn", "WhiteIsComp"
             ]]

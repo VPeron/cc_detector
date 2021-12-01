@@ -19,10 +19,14 @@ def set_move_dict():
         }
     return move_dict
 
-def move_info_extractor(game, board, move_dict):
-    move_dict['Game_ID'].append(game.headers['FICSGamesDBGameNo'])
+def move_info_extractor(game, board, move_dict, game_counter):
+    if 'FICSGamesDBGameNo' in game.headers:
+        move_dict['Game_ID'].append(game.headers['FICSGamesDBGameNo'])
+    else:
+        move_dict['Game_ID'].append(f"game_{game_counter}")
     move_dict['FEN_moves'].append(board.fen())
     return move_dict
+
 
 def bitmap_representer(board, pieces, squares, move_dict):
     bitmap_board_dict = {}
