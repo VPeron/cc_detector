@@ -13,5 +13,6 @@ COPY requirements.txt /requirements.txt
 
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
+RUN apt install stockfish
 
 CMD uvicorn chessapi:app --host 0.0.0.0 --port $PORT
