@@ -24,7 +24,10 @@ def game_info_extractor(game, game_dict, game_counter):
     game_dict['Black'].append(game.headers['Black'])  # dummy ID
     game_dict['White_Elo'].append(game.headers['WhiteElo'])
     game_dict['Black_Elo'].append(game.headers['BlackElo'])
-    game_dict['ECO'].append(game.headers['ECO'])
+    if 'ECO' in game.headers:
+        game_dict['ECO'].append(game.headers['ECO'])
+    else:
+        game_dict['ECO'].append("NA")
     game_dict['Result'].append(game.headers['Result'])
     game_dict['Date'].append(game.headers['Date'])
 
