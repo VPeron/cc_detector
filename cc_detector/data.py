@@ -52,9 +52,12 @@ class ChessData:
         self.max_game_length = 100
 
         #Set stockfish engine for move evaluation
-        self.stockfish= Stockfish(parameters={"Threads": 2,
-                                              'Min Split Depth': 26,
-                                              'Ponder':True})
+        self.stockfish = Stockfish(path="/usr/games/stockfish",
+                                   parameters={
+                                       "Threads": 2,
+                                       'Min Split Depth': 26,
+                                       'Ponder': True
+                                   })
         self.stockfish.set_elo_rating(2600)
         self.stockfish.set_skill_level(30)
 
