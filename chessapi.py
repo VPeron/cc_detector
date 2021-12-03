@@ -42,7 +42,7 @@ def index():
 
 
 class Item(BaseModel):
-    #Bitmap_moves: list
+    Bitmap_moves: list
     Game_ID: list
     FEN_moves: list
     WhiteIsComp: list
@@ -59,17 +59,17 @@ def predict(request: Item):
 
     chessdata = ChessData()
 
-    # Bitmap_moves_mod = []
-    # for move in request.Bitmap_moves:
-    #     move = move[:-1]
-    #     Bitmap_move_temp = move.split("-")
-    #     Bitmap_move_temp = [int(x) for x in Bitmap_move_temp]
-    #     Bitmap_moves_mod.append(Bitmap_move_temp)
+    Bitmap_moves_mod = []
+    for move in request.Bitmap_moves:
+        move = move[:-1]
+        Bitmap_move_temp = move.split("-")
+        Bitmap_move_temp = [int(x) for x in Bitmap_move_temp]
+        Bitmap_moves_mod.append(Bitmap_move_temp)
 
     move_dict = {
         'Game_ID': request.Game_ID,
         "FEN_moves": request.FEN_moves,
-        #"Bitmap_moves": Bitmap_moves_mod,
+        "Bitmap_moves": Bitmap_moves_mod,
         "WhiteIsComp": request.WhiteIsComp,
         "turn": request.turn,
         "Castling_right": request.Castling_right,
