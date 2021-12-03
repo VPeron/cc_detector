@@ -54,7 +54,7 @@ class ChessData:
         self.max_game_length = 100
 
         #Set stockfish engine for move evaluation
-        self.stockfish = Stockfish(path="/usr/games/stockfish",
+        self.stockfish = Stockfish(#path="/usr/games/stockfish",
                                    parameters={
                                        "Threads": 2,
                                        'Min Split Depth': 26,
@@ -237,9 +237,10 @@ class ChessData:
 
         ## get binary board representation for each move
         if api==True:
-            df_wide = pd.DataFrame(
+            df_wide_api = pd.DataFrame(
                 move_df["Bitmap_moves"].tolist(),
                 columns=get_bitmap_header())
+
         if api==False:
             df_wide = binary_board_df(move_df)
 
@@ -272,17 +273,50 @@ class ChessData:
             if (x["turn"] == "black") else x["Evaluation_diff"],
             axis=1)
 
-        move_df['pawn_count'] = pawn_count(move_df)
-        move_df['knight_count'] = knight_count(move_df)
-        move_df['bishop_count'] = bishop_count(move_df)
-        move_df['rook_count'] = rook_count(move_df)
-        move_df['queen_count'] = queen_count(move_df)
+        if api == True:
+            move_df['pawn_count'] = pawn_count(move_df=move_df,
+                                               df_wide_api= df_wide_api,
+                                               api=True)
+            move_df['knight_count'] = knight_count(move_df=move_df,
+                                                   df_wide_api=df_wide_api,
+                                                   api=True)
+            move_df['bishop_count'] = bishop_count(move_df=move_df,
+                                                   df_wide_api=df_wide_api,
+                                                   api=True)
+            move_df['rook_count'] = rook_count(move_df=move_df,
+                                               df_wide_api=df_wide_api,
+                                               api=True)
+            move_df['queen_count'] = queen_count(move_df=move_df,
+                                                 df_wide_api=df_wide_api,
+                                                 api=True)
 
-        move_df['opp_pawn_count'] = opp_pawn_count(move_df)
-        move_df['opp_knight_count'] = opp_knight_count(move_df)
-        move_df['opp_bishop_count'] = opp_bishop_count(move_df)
-        move_df['opp_rook_count'] = opp_rook_count(move_df)
-        move_df['opp_queen_count'] = opp_queen_count(move_df)
+            move_df['opp_pawn_count'] = opp_pawn_count(move_df=move_df,
+                                                       df_wide_api=df_wide_api,
+                                                       api=True)
+            move_df['opp_knight_count'] = opp_knight_count(move_df=move_df,
+                                                           df_wide_api=df_wide_api,
+                                                           api=True)
+            move_df['opp_bishop_count'] = opp_bishop_count(move_df=move_df,
+                                                           df_wide_api=df_wide_api,
+                                                           api=True)
+            move_df['opp_rook_count'] = opp_rook_count(move_df=move_df,
+                                                       df_wide_api=df_wide_api,
+                                                       api=True)
+            move_df['opp_queen_count'] = opp_queen_count(move_df=move_df,
+                                                         df_wide_api=df_wide_api,
+                                                         api=True)
+        else:
+            move_df['pawn_count'] = pawn_count(move_df, api =False)
+            move_df['knight_count'] = knight_count(move_df, api =False)
+            move_df['bishop_count'] = bishop_count(move_df, api =False)
+            move_df['rook_count'] = rook_count(move_df, api =False)
+            move_df['queen_count'] = queen_count(move_df, api =False)
+
+            move_df['opp_pawn_count'] = opp_pawn_count(move_df, api =False)
+            move_df['opp_knight_count'] = opp_knight_count(move_df, api =False)
+            move_df['opp_bishop_count'] = opp_bishop_count(move_df, api =False)
+            move_df['opp_rook_count'] = opp_rook_count(move_df, api = False)
+            move_df['opp_queen_count'] = opp_queen_count(move_df, api = False)
 
         #get numerical features from move_df (those that need to be scaled)
         game_infos_num = move_df[[

@@ -196,98 +196,249 @@ def get_bitmap_header():
     ]
     return bitmap_headers
 
-def pawn_count(move_df):
+def pawn_count(move_df, df_wide_api=None, api=False):
     pawn_count = []
-    for i in range(len(move_df["Bitmap_moves"])):
-        if move_df["turn"][i] == "white":
-            pawn_count.append(sum(move_df["Bitmap_moves"][i]["P"].values()))
-        if move_df["turn"][i] == "black":
-            pawn_count.append(sum(move_df["Bitmap_moves"][i]["p"].values()))
+    if api==True:
+        for i in range(len(move_df)):
+            if move_df["turn"][i] == "white":
+                df_temp = df_wide_api[[
+                    col for col in df_wide_api.columns if 'P' in col
+                ]].sum(axis=1)
+                pawn_count.append(df_temp[i])
+            if move_df["turn"][i] == "black":
+                df_temp = df_wide_api[[
+                    col for col in df_wide_api.columns if 'p' in col
+                ]].sum(axis=1)
+                pawn_count.append(df_temp[i])
+    else:
+        for i in range(len(move_df["Bitmap_moves"])):
+            if move_df["turn"][i] == "white":
+                pawn_count.append(sum(move_df["Bitmap_moves"][i]["P"].values()))
+            if move_df["turn"][i] == "black":
+                pawn_count.append(sum(move_df["Bitmap_moves"][i]["p"].values()))
     return pawn_count
 
 
-def knight_count(move_df):
+def knight_count(move_df, df_wide_api=None, api=False):
     knight_count = []
-    for i in range(len(move_df["Bitmap_moves"])):
-        if move_df["turn"][i] == "white":
-            knight_count.append(sum(move_df["Bitmap_moves"][i]["N"].values()))
-        if move_df["turn"][i] == "black":
-            knight_count.append(sum(move_df["Bitmap_moves"][i]["n"].values()))
+    if api == True:
+        for i in range(len(move_df)):
+            if move_df["turn"][i] == "white":
+                df_temp = df_wide_api[[
+                    col for col in df_wide_api.columns if 'N' in col
+                ]].sum(axis=1)
+                knight_count.append(df_temp[i])
+            if move_df["turn"][i] == "black":
+                df_temp = df_wide_api[[
+                    col for col in df_wide_api.columns if 'n' in col
+                ]].sum(axis=1)
+                knight_count.append(df_temp[i])
+    else:
+        for i in range(len(move_df["Bitmap_moves"])):
+            if move_df["turn"][i] == "white":
+                knight_count.append(sum(
+                    move_df["Bitmap_moves"][i]["N"].values()))
+            if move_df["turn"][i] == "black":
+                knight_count.append(sum(
+                    move_df["Bitmap_moves"][i]["n"].values()))
     return knight_count
 
-def bishop_count(move_df):
+
+def bishop_count(move_df, df_wide_api=None, api=False):
     bishop_count = []
-    for i in range(len(move_df["Bitmap_moves"])):
-        if move_df["turn"][i] == "white":
-            bishop_count.append(sum(move_df["Bitmap_moves"][i]["B"].values()))
-        if move_df["turn"][i] == "black":
-            bishop_count.append(sum(move_df["Bitmap_moves"][i]["b"].values()))
+    if api == True:
+        for i in range(len(move_df)):
+            if move_df["turn"][i] == "white":
+                df_temp = df_wide_api[[
+                    col for col in df_wide_api.columns if 'B' in col
+                ]].sum(axis=1)
+                bishop_count.append(df_temp[i])
+            if move_df["turn"][i] == "black":
+                df_temp = df_wide_api[[
+                    col for col in df_wide_api.columns if 'b' in col
+                ]].sum(axis=1)
+                bishop_count.append(df_temp[i])
+    else:
+        for i in range(len(move_df["Bitmap_moves"])):
+            if move_df["turn"][i] == "white":
+                bishop_count.append(sum(
+                    move_df["Bitmap_moves"][i]["B"].values()))
+            if move_df["turn"][i] == "black":
+                bishop_count.append(sum(
+                    move_df["Bitmap_moves"][i]["b"].values()))
     return bishop_count
 
-def rook_count(move_df):
+
+def rook_count(move_df, df_wide_api=None, api=False):
     rook_count = []
-    for i in range(len(move_df["Bitmap_moves"])):
-        if move_df["turn"][i] == "white":
-            rook_count.append(sum(move_df["Bitmap_moves"][i]["R"].values()))
-        if move_df["turn"][i] == "black":
-            rook_count.append(sum(move_df["Bitmap_moves"][i]["r"].values()))
+    if api == True:
+        for i in range(len(move_df)):
+            if move_df["turn"][i] == "white":
+                df_temp = df_wide_api[[
+                    col for col in df_wide_api.columns if 'R' in col
+                ]].sum(axis=1)
+                rook_count.append(df_temp[i])
+            if move_df["turn"][i] == "black":
+                df_temp = df_wide_api[[
+                    col for col in df_wide_api.columns if 'r' in col
+                ]].sum(axis=1)
+                rook_count.append(df_temp[i])
+    else:
+        for i in range(len(move_df["Bitmap_moves"])):
+            if move_df["turn"][i] == "white":
+                rook_count.append(sum(
+                    move_df["Bitmap_moves"][i]["R"].values()))
+            if move_df["turn"][i] == "black":
+                rook_count.append(sum(
+                    move_df["Bitmap_moves"][i]["r"].values()))
     return rook_count
 
-def queen_count(move_df):
+
+def queen_count(move_df, df_wide_api=None, api=False):
     queen_count = []
-    for i in range(len(move_df["Bitmap_moves"])):
-        if move_df["turn"][i] == "white":
-            queen_count.append(sum(move_df["Bitmap_moves"][i]["Q"].values()))
-        if move_df["turn"][i] == "black":
-            queen_count.append(sum(move_df["Bitmap_moves"][i]["q"].values()))
+    if api == True:
+        for i in range(len(move_df)):
+            if move_df["turn"][i] == "white":
+                df_temp = df_wide_api[[
+                    col for col in df_wide_api.columns if 'Q' in col
+                ]].sum(axis=1)
+                queen_count.append(df_temp[i])
+            if move_df["turn"][i] == "black":
+                df_temp = df_wide_api[[
+                    col for col in df_wide_api.columns if 'q' in col
+                ]].sum(axis=1)
+                queen_count.append(df_temp[i])
+    else:
+        for i in range(len(move_df["Bitmap_moves"])):
+            if move_df["turn"][i] == "white":
+                queen_count.append(sum(
+                    move_df["Bitmap_moves"][i]["Q"].values()))
+            if move_df["turn"][i] == "black":
+                queen_count.append(sum(
+                    move_df["Bitmap_moves"][i]["q"].values()))
     return queen_count
 
 
-def opp_pawn_count(move_df):
+def opp_pawn_count(move_df, df_wide_api=None, api=False):
     pawn_count = []
-    for i in range(len(move_df["Bitmap_moves"])):
-        if move_df["turn"][i] == "white":
-            pawn_count.append(sum(move_df["Bitmap_moves"][i]["p"].values()))
-        if move_df["turn"][i] == "black":
-            pawn_count.append(sum(move_df["Bitmap_moves"][i]["P"].values()))
+    if api == True:
+        for i in range(len(move_df)):
+            if move_df["turn"][i] == "white":
+                df_temp = df_wide_api[[
+                    col for col in df_wide_api.columns if 'p' in col
+                ]].sum(axis=1)
+                pawn_count.append(df_temp[i])
+            if move_df["turn"][i] == "black":
+                df_temp = df_wide_api[[
+                    col for col in df_wide_api.columns if 'P' in col
+                ]].sum(axis=1)
+                pawn_count.append(df_temp[i])
+    else:
+        for i in range(len(move_df["Bitmap_moves"])):
+            if move_df["turn"][i] == "white":
+                pawn_count.append(sum(
+                    move_df["Bitmap_moves"][i]["p"].values()))
+            if move_df["turn"][i] == "black":
+                pawn_count.append(sum(
+                    move_df["Bitmap_moves"][i]["P"].values()))
     return pawn_count
 
 
-def opp_knight_count(move_df):
-    knight_count = []
-    for i in range(len(move_df["Bitmap_moves"])):
-        if move_df["turn"][i] == "white":
-            knight_count.append(sum(move_df["Bitmap_moves"][i]["n"].values()))
-        if move_df["turn"][i] == "black":
-            knight_count.append(sum(move_df["Bitmap_moves"][i]["N"].values()))
-    return knight_count
+def opp_knight_count(move_df, df_wide_api=None, api=False):
+    opp_knight_count = []
+    if api == True:
+        for i in range(len(move_df)):
+            if move_df["turn"][i] == "white":
+                df_temp = df_wide_api[[
+                    col for col in df_wide_api.columns if 'n' in col
+                ]].sum(axis=1)
+                opp_knight_count.append(df_temp[i])
+            if move_df["turn"][i] == "black":
+                df_temp = df_wide_api[[
+                    col for col in df_wide_api.columns if 'N' in col
+                ]].sum(axis=1)
+                opp_knight_count.append(df_temp[i])
+    else:
+        for i in range(len(move_df["Bitmap_moves"])):
+            if move_df["turn"][i] == "white":
+                opp_knight_count.append(sum(
+                    move_df["Bitmap_moves"][i]["n"].values()))
+            if move_df["turn"][i] == "black":
+                opp_knight_count.append(sum(
+                    move_df["Bitmap_moves"][i]["N"].values()))
+    return opp_knight_count
 
 
-def opp_bishop_count(move_df):
-    bishop_count = []
-    for i in range(len(move_df["Bitmap_moves"])):
-        if move_df["turn"][i] == "white":
-            bishop_count.append(sum(move_df["Bitmap_moves"][i]["b"].values()))
-        if move_df["turn"][i] == "black":
-            bishop_count.append(sum(move_df["Bitmap_moves"][i]["B"].values()))
-    return bishop_count
+def opp_bishop_count(move_df, df_wide_api=None, api=False):
+    opp_bishop_count = []
+    if api == True:
+        for i in range(len(move_df)):
+            if move_df["turn"][i] == "white":
+                df_temp = df_wide_api[[
+                    col for col in df_wide_api.columns if 'b' in col
+                ]].sum(axis=1)
+                opp_bishop_count.append(df_temp[i])
+            if move_df["turn"][i] == "black":
+                df_temp = df_wide_api[[
+                    col for col in df_wide_api.columns if 'B' in col
+                ]].sum(axis=1)
+                opp_bishop_count.append(df_temp[i])
+    else:
+        for i in range(len(move_df["Bitmap_moves"])):
+            if move_df["turn"][i] == "white":
+                opp_bishop_count.append(sum(
+                    move_df["Bitmap_moves"][i]["b"].values()))
+            if move_df["turn"][i] == "black":
+                opp_bishop_count.append(sum(
+                    move_df["Bitmap_moves"][i]["B"].values()))
+    return opp_bishop_count
 
 
-def opp_rook_count(move_df):
-    rook_count = []
-    for i in range(len(move_df["Bitmap_moves"])):
-        if move_df["turn"][i] == "white":
-            rook_count.append(sum(move_df["Bitmap_moves"][i]["r"].values()))
-        if move_df["turn"][i] == "black":
-            rook_count.append(sum(move_df["Bitmap_moves"][i]["R"].values()))
-    return rook_count
+def opp_rook_count(move_df, df_wide_api=None, api=False):
+    opp_rook_count = []
+    if api == True:
+        for i in range(len(move_df)):
+            if move_df["turn"][i] == "white":
+                df_temp = df_wide_api[[
+                    col for col in df_wide_api.columns if 'r' in col
+                ]].sum(axis=1)
+                opp_rook_count.append(df_temp[i])
+            if move_df["turn"][i] == "black":
+                df_temp = df_wide_api[[
+                    col for col in df_wide_api.columns if 'R' in col
+                ]].sum(axis=1)
+                opp_rook_count.append(df_temp[i])
+    else:
+        for i in range(len(move_df["Bitmap_moves"])):
+            if move_df["turn"][i] == "white":
+                opp_rook_count.append(sum(
+                    move_df["Bitmap_moves"][i]["r"].values()))
+            if move_df["turn"][i] == "black":
+                opp_rook_count.append(sum(
+                    move_df["Bitmap_moves"][i]["R"].values()))
+    return opp_rook_count
 
 
-def opp_queen_count(move_df):
-    queen_count = []
-    for i in range(len(move_df["Bitmap_moves"])):
-        if move_df["turn"][i] == "white":
-            queen_count.append(sum(move_df["Bitmap_moves"][i]["q"].values()))
-        if move_df["turn"][i] == "black":
-            queen_count.append(sum(move_df["Bitmap_moves"][i]["Q"].values()))
-    return queen_count
+def opp_queen_count(move_df, df_wide_api=None, api=False):
+    opp_queen_count = []
+    if api == True:
+        for i in range(len(move_df)):
+            if move_df["turn"][i] == "white":
+                df_temp = df_wide_api[[
+                    col for col in df_wide_api.columns if 'q' in col
+                ]].sum(axis=1)
+                opp_queen_count.append(df_temp[i])
+            if move_df["turn"][i] == "black":
+                df_temp = df_wide_api[[
+                    col for col in df_wide_api.columns if 'Q' in col
+                ]].sum(axis=1)
+                opp_queen_count.append(df_temp[i])
+    else:
+        for i in range(len(move_df["Bitmap_moves"])):
+            if move_df["turn"][i] == "white":
+                opp_queen_count.append(sum(
+                    move_df["Bitmap_moves"][i]["q"].values()))
+            if move_df["turn"][i] == "black":
+                opp_queen_count.append(sum(
+                    move_df["Bitmap_moves"][i]["Q"].values()))
+    return opp_queen_count
