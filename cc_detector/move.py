@@ -195,3 +195,99 @@ def get_bitmap_header():
         'k60', 'k61', 'k62', 'k63'
     ]
     return bitmap_headers
+
+def pawn_count(move_df):
+    pawn_count = []
+    for i in range(len(move_df["Bitmap_moves"])):
+        if move_df["turn"][i] == "white":
+            pawn_count.append(sum(move_df["Bitmap_moves"][i]["P"].values()))
+        if move_df["turn"][i] == "black":
+            pawn_count.append(sum(move_df["Bitmap_moves"][i]["p"].values()))
+    return pawn_count
+
+
+def knight_count(move_df):
+    knight_count = []
+    for i in range(len(move_df["Bitmap_moves"])):
+        if move_df["turn"][i] == "white":
+            knight_count.append(sum(move_df["Bitmap_moves"][i]["N"].values()))
+        if move_df["turn"][i] == "black":
+            knight_count.append(sum(move_df["Bitmap_moves"][i]["n"].values()))
+    return knight_count
+
+def bishop_count(move_df):
+    bishop_count = []
+    for i in range(len(move_df["Bitmap_moves"])):
+        if move_df["turn"][i] == "white":
+            bishop_count.append(sum(move_df["Bitmap_moves"][i]["B"].values()))
+        if move_df["turn"][i] == "black":
+            bishop_count.append(sum(move_df["Bitmap_moves"][i]["b"].values()))
+    return bishop_count
+
+def rook_count(move_df):
+    rook_count = []
+    for i in range(len(move_df["Bitmap_moves"])):
+        if move_df["turn"][i] == "white":
+            rook_count.append(sum(move_df["Bitmap_moves"][i]["R"].values()))
+        if move_df["turn"][i] == "black":
+            rook_count.append(sum(move_df["Bitmap_moves"][i]["r"].values()))
+    return rook_count
+
+def queen_count(move_df):
+    queen_count = []
+    for i in range(len(move_df["Bitmap_moves"])):
+        if move_df["turn"][i] == "white":
+            queen_count.append(sum(move_df["Bitmap_moves"][i]["Q"].values()))
+        if move_df["turn"][i] == "black":
+            queen_count.append(sum(move_df["Bitmap_moves"][i]["q"].values()))
+    return queen_count
+
+
+def opp_pawn_count(move_df):
+    pawn_count = []
+    for i in range(len(move_df["Bitmap_moves"])):
+        if move_df["turn"][i] == "white":
+            pawn_count.append(sum(move_df["Bitmap_moves"][i]["p"].values()))
+        if move_df["turn"][i] == "black":
+            pawn_count.append(sum(move_df["Bitmap_moves"][i]["P"].values()))
+    return pawn_count
+
+
+def opp_knight_count(move_df):
+    knight_count = []
+    for i in range(len(move_df["Bitmap_moves"])):
+        if move_df["turn"][i] == "white":
+            knight_count.append(sum(move_df["Bitmap_moves"][i]["n"].values()))
+        if move_df["turn"][i] == "black":
+            knight_count.append(sum(move_df["Bitmap_moves"][i]["N"].values()))
+    return knight_count
+
+
+def opp_bishop_count(move_df):
+    bishop_count = []
+    for i in range(len(move_df["Bitmap_moves"])):
+        if move_df["turn"][i] == "white":
+            bishop_count.append(sum(move_df["Bitmap_moves"][i]["b"].values()))
+        if move_df["turn"][i] == "black":
+            bishop_count.append(sum(move_df["Bitmap_moves"][i]["B"].values()))
+    return bishop_count
+
+
+def opp_rook_count(move_df):
+    rook_count = []
+    for i in range(len(move_df["Bitmap_moves"])):
+        if move_df["turn"][i] == "white":
+            rook_count.append(sum(move_df["Bitmap_moves"][i]["r"].values()))
+        if move_df["turn"][i] == "black":
+            rook_count.append(sum(move_df["Bitmap_moves"][i]["R"].values()))
+    return rook_count
+
+
+def opp_queen_count(move_df):
+    queen_count = []
+    for i in range(len(move_df["Bitmap_moves"])):
+        if move_df["turn"][i] == "white":
+            queen_count.append(sum(move_df["Bitmap_moves"][i]["q"].values()))
+        if move_df["turn"][i] == "black":
+            queen_count.append(sum(move_df["Bitmap_moves"][i]["Q"].values()))
+    return queen_count

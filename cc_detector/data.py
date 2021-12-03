@@ -16,7 +16,9 @@ from cc_detector.ids_generator import players_id_list
 from cc_detector.game import set_game_dict, game_info_extractor
 from cc_detector.move import set_move_dict, move_info_extractor,\
     bitmap_representer, castling_right, en_passant_opp, halfmove_clock,\
-    binary_board_df, get_bitmap_header
+    binary_board_df, get_bitmap_header, pawn_count, knight_count, bishop_count,\
+    rook_count, queen_count, opp_pawn_count, opp_knight_count, opp_bishop_count,\
+    opp_rook_count, opp_queen_count
 
 import pickle
 #import joblib
@@ -220,6 +222,7 @@ class ChessData:
             df_moves = pd.DataFrame(move_dict)
             return df_moves
 
+
     def feature_df_maker(self,
                          move_df,
                          max_game_length=100,
@@ -231,62 +234,120 @@ class ChessData:
         (a list of 2D numpy arrays, i.e. time series of the moves within one player's game).
         Returns up to two arrays: X and, if training=True, y.
         '''
-        #get binary board representation for each move
+
+        ## get binary board representation for each move
+
+        # if api==True:
+        #     df_wide = pd.DataFrame(
+        #         move_df["Bitmap_moves"].tolist(),
+        #         columns=get_bitmap_header())
+        # if api==False:
+        #     df_wide = binary_board_df(move_df)
+
+        ## Evaluate moves with stockfish
         if api==True:
-            df_wide = pd.DataFrame(
-                move_df["Bitmap_moves"].tolist(),
-                columns=get_bitmap_header())
-        if api==False:
-            df_wide = binary_board_df(move_df)
+            eval_dict = {"eval":[]}
 
-        #Evaluate moves with stockfish
-        eval_list = []
-        for i in move_df["FEN_moves"]:
-            self.stockfish.set_fen_position(i)
-            try:
-                eval_list.append(self.stockfish.get_evaluation()["value"])
-            except ValueError:
-                eval_list.append("NA")
-        move_df["Evaluation"] = eval_list
+            for i in move_df["FEN_moves"]:
+                self.stockfish.set_fen_position(i)
+                try:
+                    eval_dict["eval"].append(
+                        self.stockfish.get_evaluation()["value"])
+                except ValueError:
+                    eval_dict["eval"].append(np.nan)
 
-        #get non-board-representation features from move_df
+            move_df["Evaluation"] = eval_dict["eval"]
+
+        # Exctract features
+        for i in move_df["Game_ID"].unique():
+            move_df.loc[move_df["Game_ID"]==i, 'Evaluation_diff'] = \
+                move_df.loc[move_df["Game_ID"]==i, 'Evaluation'].diff()
+
+        move_df["Evaluation"] = move_df.apply(
+            lambda x: x["Evaluation"] * (-1)
+            if (x["turn"] == "black") else x["Evaluation"],
+            axis=1)
+
+        move_df["Evaluation_diff"] = move_df.apply(
+            lambda x: x["Evaluation_diff"] * (-1)
+            if (x["turn"] == "black") else x["Evaluation_diff"],
+            axis=1)
+
+        move_df['pawn_count'] = pawn_count(move_df)
+        move_df['knight_count'] = knight_count(move_df)
+        move_df['bishop_count'] = bishop_count(move_df)
+        move_df['rook_count'] = rook_count(move_df)
+        move_df['queen_count'] = queen_count(move_df)
+
+        move_df['opp_pawn_count'] = opp_pawn_count(move_df)
+        move_df['opp_knight_count'] = opp_knight_count(move_df)
+        move_df['opp_bishop_count'] = opp_bishop_count(move_df)
+        move_df['opp_rook_count'] = opp_rook_count(move_df)
+        move_df['opp_queen_count'] = opp_queen_count(move_df)
+
+        #get numerical features from move_df (those that need to be scaled)
         game_infos_num = move_df[[
             "Castling_right",
             "EP_option",
             "Halfmove_clock",
-            "Evaluation"
+            "Evaluation",
+            "Evaluation_diff",
+            "pawn_count",
+            "knight_count",
+            "bishop_count",
+            "rook_count",
+            "queen_count",
+            "opp_pawn_count",
+            "opp_knight_count",
+            "opp_bishop_count",
+            "opp_rook_count",
+            "opp_queen_count"
             ]]
 
-        if "NA" in list(game_infos_num["Evaluation"].values):
-            if (game_infos_num["Evaluation"].value_counts()["NA"]) > (
-                len(game_infos_num["Evaluation"]) * 0.5):
-                game_infos_num = game_infos_num.drop(columns=["Evaluation"])
 
         game_infos_temp = move_df[[
             "Game_ID", "turn", "WhiteIsComp"
             ]]
 
-        # concatenate board representations with other features
-        df_wide_full = df_wide.join(game_infos_num)
+        ## concatenate board representations with other features
+        #df_wide_full = df_wide.join(game_infos_num)
+        df_wide_full = game_infos_num
 
-        # Scale features
+        ## Scale features and rescale outliers
+
         if "Evaluation" in df_wide_full.columns:
-            df_wide_full["Evaluation"] = df_wide_full["Evaluation"].apply(
-                lambda x: np.nan if x == "NA" else x
+            df_wide_full.loc[:,"Evaluation"] = df_wide_full["Evaluation"].apply(
+                lambda x: np.nan if x == "NA" else (
+                    3000 if x > 3000 else (
+                        -3000 if x <-3000 else x))
+                )
+            df_wide_full.loc[:,"Evaluation_diff"] = df_wide_full["Evaluation_diff"].apply(
+                lambda x: np.nan if x == "NA" else (
+                    2000 if x > 2000 else (
+                        -2000 if x <-2000 else x))
                 )
 
             if training:
-                minmax_scaler = MinMaxScaler()
-                std_scaler = StandardScaler()
-                imputer = SimpleImputer(strategy="mean")
+                minmax_hmc = MinMaxScaler()
+                minmax_eval = MinMaxScaler()
+                minmax_count = MinMaxScaler()
+                imputer_eval = SimpleImputer(strategy="mean")
 
-                eval_transformer = Pipeline([("imputer", imputer),
-                                             ("std_scaler", std_scaler)])
+                eval_transformer = Pipeline([("imputer", imputer_eval),
+                                             ("minmax_eval", minmax_eval)])
 
-                preproc_basic = ColumnTransformer(transformers=[
-                    ("minmax_scaler", minmax_scaler, ["Halfmove_clock"]),
-                    ("eval_trans", eval_transformer, ["Evaluation"])
-                ], remainder='passthrough')
+                preproc_basic = ColumnTransformer(
+                    transformers=[
+                        ("hmc_scaler", minmax_hmc, ["Halfmove_clock"]),
+                        ("eval_trans", eval_transformer,
+                         ["Evaluation", "Evaluation_diff"]),
+                        ('count_scaler', minmax_count, [
+                            "pawn_count", "knight_count", "bishop_count",
+                            "rook_count", "queen_count", "opp_pawn_count",
+                            "opp_knight_count", "opp_bishop_count",
+                            "opp_rook_count", "opp_queen_count"]
+                         )
+                    ], remainder='passthrough')
 
                 preproc_basic.fit(df_wide_full)
                 df_wide_full = pd.DataFrame(preproc_basic.transform(df_wide_full))

@@ -6,9 +6,9 @@ import matplotlib.pyplot as plt
 from cc_detector.data import ChessData
 
 from tensorflow.keras.models import Sequential
-from tensorflow.keras import layers, regularizers
+from tensorflow.keras import layers, regularizers, optimizers
 from tensorflow.keras.callbacks import EarlyStopping
-from tensorflow.keras.optimizers import RMSprop
+from tensorflow.keras.optimizers import RMSprop, Adam
 from tensorflow.keras.losses import BinaryCrossentropy
 from sklearn.model_selection import train_test_split
 
@@ -110,27 +110,31 @@ class Trainer():
             return X
 
 
-    def train_model(self, X_train, y_train,
-                    recurrent_dropout=0.2,
-                    dense_dropout=0.2,
-                    l1_reg_rate=None, #0.001,
-                    lstm_start_units=128,
-                    dense_start_units=64,
-                    verbose=0,
-                    **kwargs):
+    def train_model(
+            self,
+            X_train,
+            y_train,
+            recurrent_dropout=0.25,
+            dense_dropout=0.25,
+            l1_reg_rate=None,
+            l2_reg_rate=None, #0.001,
+            lstm_start_units=64,
+            dense_start_units=64,
+            verbose=0,
+            **kwargs):
         """
         Builds an LSTM model, compiles it, and then fits it to the data transformed
         with the transform_data() function. Returns the trained model
         """
         reg_l1 = regularizers.L1(l1_reg_rate)
-        if 'l2_reg_rate' in kwargs.keys():
-            reg_l2 = regularizers.L2(kwargs['l2_reg_rate'])
+        reg_l2 = regularizers.L2(l2_reg_rate)
 
         self.model = Sequential()
 
         self.model.add(
             layers.Masking(mask_value=-999.,
                            input_shape=(self.max_game_length, X_train.shape[2])))
+
         self.model.add(
             layers.LSTM(units=lstm_start_units,
                         activation='tanh',
@@ -141,36 +145,47 @@ class Trainer():
                         activation='tanh',
                         return_sequences=False,
                         recurrent_dropout=recurrent_dropout))
+
+        #self.model.add(layers.Dropout(dense_dropout))
+
         self.model.add(
             layers.Dense(units=dense_start_units,
                          activation='relu',
-                         kernel_regularizer=reg_l1))
+                         kernel_regularizer=reg_l2))
+
         self.model.add(layers.Dropout(dense_dropout))
-        self.model.add(
-            layers.Dense(units=int(dense_start_units / 2),
-                         activation='relu',
-                         kernel_regularizer=reg_l1))
-        self.model.add(layers.Dropout(dense_dropout))
+
+        # self.model.add(
+        #     layers.Dense(units=int(dense_start_units / 2),
+        #                  activation='relu',
+        #                  kernel_regularizer=reg_l2))
+        # self.model.add(layers.Dropout(dense_dropout))
+
         self.model.add(
             layers.Dense(units=1,
                         activation="sigmoid"))
 
         # The compilation
+        # lr_schedule = optimizers.schedules.ExponentialDecay(
+        #     initial_learning_rate=0.001,
+        #     decay_steps=10,
+        #     decay_rate=0.5)
+
         rmsprop_opt = RMSprop(learning_rate=0.0001)
 
         self.model.compile(
-            loss= BinaryCrossentropy(), #'binary_crossentropy',
-            optimizer= rmsprop_opt,
+            loss='binary_crossentropy',
+            optimizer=rmsprop_opt,
             metrics=["accuracy"])
 
         # The fit
-        es = EarlyStopping(restore_best_weights=True, patience=10)
+        es = EarlyStopping(monitor="val_accuracy", restore_best_weights=True, patience=25)
 
         history = self.model.fit(X_train, y_train,
                   batch_size=64,
                   epochs=500,
                   callbacks=[es],
-                  validation_split=0.2,
+                  validation_split=0.3,
                   verbose=verbose)
 
         #self.model = model
@@ -182,6 +197,9 @@ class Trainer():
         self.mlflow_log_param("lstm_start_units", lstm_start_units)
         self.mlflow_log_param("dense_start_units", dense_start_units)
         self.mlflow_log_param("train_data_size", X_train.shape[0])
+        self.mlflow_log_param("train_accuracy", history.history["accuracy"][-25])
+        self.mlflow_log_param("validation_accuracy",
+                              history.history["val_accuracy"][-25])
 
         print('''Model has been trained and saved 💪 Training params have been logged to MLflow:
         https://mlflow.lewagon.co/#/experiments/21242''')
