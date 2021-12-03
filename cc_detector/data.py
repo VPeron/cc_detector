@@ -236,13 +236,12 @@ class ChessData:
         '''
 
         ## get binary board representation for each move
-
-        # if api==True:
-        #     df_wide = pd.DataFrame(
-        #         move_df["Bitmap_moves"].tolist(),
-        #         columns=get_bitmap_header())
-        # if api==False:
-        #     df_wide = binary_board_df(move_df)
+        if api==True:
+            df_wide = pd.DataFrame(
+                move_df["Bitmap_moves"].tolist(),
+                columns=get_bitmap_header())
+        if api==False:
+            df_wide = binary_board_df(move_df)
 
         ## Evaluate moves with stockfish
         if api==True:
