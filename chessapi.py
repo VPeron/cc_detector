@@ -51,20 +51,11 @@ class Item(BaseModel):
     EP_option: list
     Pseudo_EP_option: list
     Halfmove_clock: list
-    Evaluation: list
+    #Evaluation: list
     Player_color: str
 
 @app.post("/predict")
 def predict(request: Item):
-    # Bitmap_moves: list = Query([]),
-    # Game_ID: list = Query([]),
-    # FEN_moves: list = Query([]),
-    # WhiteIsComp: list = Query([]),
-    # turn: list = Query([]),
-    # Castling_right: list = Query([]),
-    # EP_option: list = Query([]),
-    # Pseudo_EP_option: list = Query([]),
-    # Halfmove_clock: list = Query([])):
 
     chessdata = ChessData()
 
@@ -85,7 +76,7 @@ def predict(request: Item):
         "EP_option": request.EP_option,
         "Pseudo_EP_option": request.Pseudo_EP_option,
         "Halfmove_clock": request.Halfmove_clock,
-        "Evaluation": request.Evaluation
+        #"Evaluation": request.Evaluation
     }
 
     player_color = request.Player_color

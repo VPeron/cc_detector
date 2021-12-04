@@ -27,6 +27,12 @@ def player_info_extractor(game, player_dict):
 
     player_dict['White'].append(game.headers['White'])
     player_dict['Black'].append(game.headers['Black'])
-    player_dict['WhiteIsComp'].append(game.headers.get('WhiteIsComp', 'No'))
+
+    if ("BlackIsComp" in game.headers.keys()) or\
+        ("WhiteIsComp" in game.headers.keys()):
+        player_dict['WhiteIsComp'].append(game.headers.get(
+            'WhiteIsComp', 'No'))
+    else:
+        player_dict['WhiteIsComp'].append("NA")
 
     return player_dict

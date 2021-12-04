@@ -40,4 +40,5 @@ def rtp_input(move_df, source="gcp", white=True, api=True, **kwargs):
     X_eval = X_eval.reshape(1, X_eval.shape[0], X_eval.shape[1])
 
     prediction = predict_comp(X=X_eval, source=source)
+    print(prediction)
     return prediction[0][0]
