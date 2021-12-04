@@ -54,7 +54,7 @@ class ChessData:
         self.max_game_length = 100
 
         #Set stockfish engine for move evaluation
-        self.stockfish = Stockfish(#path="/usr/games/stockfish",
+        self.stockfish = Stockfish(path="/usr/games/stockfish",
                                    parameters={
                                        "Threads": 2,
                                        'Min Split Depth': 26,
